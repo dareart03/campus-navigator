@@ -1,0 +1,1482 @@
+{
+ "nodes": [
+  {
+   "id": "c-lt",
+   "x": 129,
+   "y": 93.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "c-rt",
+   "x": 586,
+   "y": 93.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "c-lb",
+   "x": 129,
+   "y": 371.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "c-rb",
+   "x": 586,
+   "y": 371.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "door-311",
+   "x": 113.5,
+   "y": 250.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 311"
+  },
+  {
+   "id": "c-l-129-250",
+   "x": 129,
+   "y": 250.0,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-311",
+   "x": 59,
+   "y": 262.5,
+   "floor": 3,
+   "type": "room",
+   "label": "311"
+  },
+  {
+   "id": "door-310",
+   "x": 132.0,
+   "y": 390.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 310"
+  },
+  {
+   "id": "c-b-132-372",
+   "x": 132.0,
+   "y": 371.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-310",
+   "x": 101,
+   "y": 425.5,
+   "floor": 3,
+   "type": "room",
+   "label": "310"
+  },
+  {
+   "id": "door-309",
+   "x": 157.8,
+   "y": 390.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 309"
+  },
+  {
+   "id": "c-b-158-372",
+   "x": 157.8,
+   "y": 371.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-309",
+   "x": 188.5,
+   "y": 425.5,
+   "floor": 3,
+   "type": "room",
+   "label": "309"
+  },
+  {
+   "id": "door-308",
+   "x": 245.2,
+   "y": 390.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 308"
+  },
+  {
+   "id": "c-b-245-372",
+   "x": 245.2,
+   "y": 371.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-308",
+   "x": 263.5,
+   "y": 425.5,
+   "floor": 3,
+   "type": "room",
+   "label": "308"
+  },
+  {
+   "id": "door-307",
+   "x": 308.0,
+   "y": 390.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 307"
+  },
+  {
+   "id": "c-b-308-372",
+   "x": 308.0,
+   "y": 371.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-307",
+   "x": 323.5,
+   "y": 425.5,
+   "floor": 3,
+   "type": "room",
+   "label": "307"
+  },
+  {
+   "id": "door-306",
+   "x": 369.5,
+   "y": 390.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 306"
+  },
+  {
+   "id": "c-b-370-372",
+   "x": 369.5,
+   "y": 371.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-306",
+   "x": 386,
+   "y": 425.5,
+   "floor": 3,
+   "type": "room",
+   "label": "306"
+  },
+  {
+   "id": "door-305",
+   "x": 428.2,
+   "y": 390.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 305"
+  },
+  {
+   "id": "c-b-428-372",
+   "x": 428.2,
+   "y": 371.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-305",
+   "x": 447.5,
+   "y": 425.5,
+   "floor": 3,
+   "type": "room",
+   "label": "305"
+  },
+  {
+   "id": "door-304",
+   "x": 552.2,
+   "y": 390.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 304"
+  },
+  {
+   "id": "c-b-552-372",
+   "x": 552.2,
+   "y": 371.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-304",
+   "x": 522,
+   "y": 425.5,
+   "floor": 3,
+   "type": "room",
+   "label": "304"
+  },
+  {
+   "id": "door-303",
+   "x": 581.0,
+   "y": 390.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 303"
+  },
+  {
+   "id": "c-b-581-372",
+   "x": 581.0,
+   "y": 371.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-303",
+   "x": 613.5,
+   "y": 425.5,
+   "floor": 3,
+   "type": "room",
+   "label": "303"
+  },
+  {
+   "id": "door-324",
+   "x": 171.5,
+   "y": 334.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 324"
+  },
+  {
+   "id": "c-l-129-334",
+   "x": 129,
+   "y": 334.0,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-324",
+   "x": 201,
+   "y": 336.5,
+   "floor": 3,
+   "type": "room",
+   "label": "324"
+  },
+  {
+   "id": "door-man-WC-1",
+   "x": 157.8,
+   "y": 295.5,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь man-WC-1"
+  },
+  {
+   "id": "door-man-WC-1-out",
+   "x": 157.8,
+   "y": 304.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "c-l-129-304",
+   "x": 129,
+   "y": 304.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "wc-man-1",
+   "x": 157.8,
+   "y": 309.5,
+   "floor": 3,
+   "type": "wc",
+   "label": "Мужской туалет 1"
+  },
+  {
+   "id": "door-325-1",
+   "x": 171.5,
+   "y": 305.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 325-1"
+  },
+  {
+   "id": "c-l-129-305",
+   "x": 129,
+   "y": 305.0,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-325",
+   "x": 201,
+   "y": 232,
+   "floor": 3,
+   "type": "room",
+   "label": "325"
+  },
+  {
+   "id": "door-324_2",
+   "x": 171.5,
+   "y": 330.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 324_2"
+  },
+  {
+   "id": "c-l-129-330",
+   "x": 129,
+   "y": 330.0,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "door-woman-WC-1",
+   "x": 158.0,
+   "y": 170.5,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь woman-WC-1"
+  },
+  {
+   "id": "door-woman-WC-1-out",
+   "x": 158.0,
+   "y": 161.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "c-l-129-162",
+   "x": 129,
+   "y": 161.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "wc-woman-1",
+   "x": 158.0,
+   "y": 156.5,
+   "floor": 3,
+   "type": "wc",
+   "label": "Женский туалет 1"
+  },
+  {
+   "id": "door-312",
+   "x": 113.5,
+   "y": 210.8,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 312"
+  },
+  {
+   "id": "c-l-129-211",
+   "x": 129,
+   "y": 210.8,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-312",
+   "x": 59,
+   "y": 198.5,
+   "floor": 3,
+   "type": "room",
+   "label": "312"
+  },
+  {
+   "id": "door-323",
+   "x": 543.5,
+   "y": 334.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 323"
+  },
+  {
+   "id": "c-r-586-334",
+   "x": 586,
+   "y": 334.0,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-323",
+   "x": 514,
+   "y": 336.5,
+   "floor": 3,
+   "type": "room",
+   "label": "323"
+  },
+  {
+   "id": "door-man-WC-2",
+   "x": 557.2,
+   "y": 295.5,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь man-WC-2"
+  },
+  {
+   "id": "door-man-WC-2-out",
+   "x": 557.2,
+   "y": 304.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "c-r-586-304",
+   "x": 586,
+   "y": 304.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "wc-man-2",
+   "x": 557.2,
+   "y": 309.5,
+   "floor": 3,
+   "type": "wc",
+   "label": "Мужской туалет 2"
+  },
+  {
+   "id": "door-322-1",
+   "x": 543.5,
+   "y": 303.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 322-1"
+  },
+  {
+   "id": "c-r-586-303",
+   "x": 586,
+   "y": 303.0,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-322",
+   "x": 514,
+   "y": 232,
+   "floor": 3,
+   "type": "room",
+   "label": "322"
+  },
+  {
+   "id": "door-woman-WC-2",
+   "x": 557.0,
+   "y": 170.5,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь woman-WC-2"
+  },
+  {
+   "id": "door-woman-WC-2-out",
+   "x": 557.0,
+   "y": 161.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "c-r-586-162",
+   "x": 586,
+   "y": 161.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "wc-woman-2",
+   "x": 557.0,
+   "y": 156.5,
+   "floor": 3,
+   "type": "wc",
+   "label": "Женский туалет 2"
+  },
+  {
+   "id": "door-301",
+   "x": 601.5,
+   "y": 209.8,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 301"
+  },
+  {
+   "id": "c-r-586-210",
+   "x": 586,
+   "y": 209.8,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-301",
+   "x": 655.5,
+   "y": 198.5,
+   "floor": 3,
+   "type": "room",
+   "label": "301"
+  },
+  {
+   "id": "door-302",
+   "x": 601.5,
+   "y": 250.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 302"
+  },
+  {
+   "id": "c-r-586-250",
+   "x": 586,
+   "y": 250.0,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-302",
+   "x": 656,
+   "y": 262.5,
+   "floor": 3,
+   "type": "room",
+   "label": "302"
+  },
+  {
+   "id": "door-326",
+   "x": 171.5,
+   "y": 132.5,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 326"
+  },
+  {
+   "id": "c-l-129-132",
+   "x": 129,
+   "y": 132.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-326",
+   "x": 201,
+   "y": 129.5,
+   "floor": 3,
+   "type": "room",
+   "label": "326"
+  },
+  {
+   "id": "door-325-2",
+   "x": 171.5,
+   "y": 160.5,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 325-2"
+  },
+  {
+   "id": "c-l-129-160",
+   "x": 129,
+   "y": 160.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "door-321",
+   "x": 543.5,
+   "y": 132.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 321"
+  },
+  {
+   "id": "c-r-586-132",
+   "x": 586,
+   "y": 132.0,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-321",
+   "x": 514,
+   "y": 129.5,
+   "floor": 3,
+   "type": "room",
+   "label": "321"
+  },
+  {
+   "id": "door-322-2",
+   "x": 543.5,
+   "y": 161.5,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 322-2"
+  },
+  {
+   "id": "door-313",
+   "x": 132.2,
+   "y": 76.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 313"
+  },
+  {
+   "id": "c-t-132-94",
+   "x": 132.2,
+   "y": 93.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-313",
+   "x": 101,
+   "y": 40.5,
+   "floor": 3,
+   "type": "room",
+   "label": "313"
+  },
+  {
+   "id": "door-314",
+   "x": 160.0,
+   "y": 76.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 314"
+  },
+  {
+   "id": "c-t-160-94",
+   "x": 160.0,
+   "y": 93.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-314",
+   "x": 188.5,
+   "y": 40.5,
+   "floor": 3,
+   "type": "room",
+   "label": "314"
+  },
+  {
+   "id": "door-315",
+   "x": 245.5,
+   "y": 76.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 315"
+  },
+  {
+   "id": "c-t-246-94",
+   "x": 245.5,
+   "y": 93.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-315",
+   "x": 263.5,
+   "y": 40.5,
+   "floor": 3,
+   "type": "room",
+   "label": "315"
+  },
+  {
+   "id": "door-316",
+   "x": 308.0,
+   "y": 76.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 316"
+  },
+  {
+   "id": "c-t-308-94",
+   "x": 308.0,
+   "y": 93.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-316",
+   "x": 323.5,
+   "y": 40.5,
+   "floor": 3,
+   "type": "room",
+   "label": "316"
+  },
+  {
+   "id": "door-317",
+   "x": 369.5,
+   "y": 76.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 317"
+  },
+  {
+   "id": "c-t-370-94",
+   "x": 369.5,
+   "y": 93.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-317",
+   "x": 386,
+   "y": 40.5,
+   "floor": 3,
+   "type": "room",
+   "label": "317"
+  },
+  {
+   "id": "door-318",
+   "x": 428.2,
+   "y": 76.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 318"
+  },
+  {
+   "id": "c-t-428-94",
+   "x": 428.2,
+   "y": 93.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-318",
+   "x": 447.5,
+   "y": 40.5,
+   "floor": 3,
+   "type": "room",
+   "label": "318"
+  },
+  {
+   "id": "door-319",
+   "x": 552.2,
+   "y": 76.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 319"
+  },
+  {
+   "id": "c-t-552-94",
+   "x": 552.2,
+   "y": 93.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-319",
+   "x": 522,
+   "y": 40.5,
+   "floor": 3,
+   "type": "room",
+   "label": "319"
+  },
+  {
+   "id": "door-320",
+   "x": 580.8,
+   "y": 76.0,
+   "floor": 3,
+   "type": "door",
+   "label": "Дверь 320"
+  },
+  {
+   "id": "c-t-581-94",
+   "x": 580.8,
+   "y": 93.5,
+   "floor": 3,
+   "type": "corridor"
+  },
+  {
+   "id": "room-320",
+   "x": 613.5,
+   "y": 40.5,
+   "floor": 3,
+   "type": "room",
+   "label": "320"
+  },
+  {
+   "id": "ladder-1",
+   "x": 87.0,
+   "y": 374.2,
+   "floor": 3,
+   "type": "stairs",
+   "label": "Лестница 1"
+  },
+  {
+   "id": "ladder-2",
+   "x": 87.0,
+   "y": 91.8,
+   "floor": 3,
+   "type": "stairs",
+   "label": "Лестница 2"
+  },
+  {
+   "id": "ladder-3",
+   "x": 628.5,
+   "y": 93.8,
+   "floor": 3,
+   "type": "stairs",
+   "label": "Лестница 3"
+  },
+  {
+   "id": "ladder-4",
+   "x": 628.5,
+   "y": 372.2,
+   "floor": 3,
+   "type": "stairs",
+   "label": "Лестница 4"
+  }
+ ],
+ "edges": [
+  {
+   "from": "door-311",
+   "to": "c-l-129-250",
+   "weight": 15.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-311",
+   "to": "door-311",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-310",
+   "to": "c-b-132-372",
+   "weight": 18.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-310",
+   "to": "door-310",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-309",
+   "to": "c-b-158-372",
+   "weight": 18.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-309",
+   "to": "door-309",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-308",
+   "to": "c-b-245-372",
+   "weight": 18.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-308",
+   "to": "door-308",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-307",
+   "to": "c-b-308-372",
+   "weight": 18.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-307",
+   "to": "door-307",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-306",
+   "to": "c-b-370-372",
+   "weight": 18.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-306",
+   "to": "door-306",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-305",
+   "to": "c-b-428-372",
+   "weight": 18.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-305",
+   "to": "door-305",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-304",
+   "to": "c-b-552-372",
+   "weight": 18.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-304",
+   "to": "door-304",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-303",
+   "to": "c-b-581-372",
+   "weight": 18.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-303",
+   "to": "door-303",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-324",
+   "to": "c-l-129-334",
+   "weight": 42.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-324",
+   "to": "door-324",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-man-WC-1",
+   "to": "door-man-WC-1-out",
+   "weight": 9.0,
+   "type": "door"
+  },
+  {
+   "from": "door-man-WC-1-out",
+   "to": "c-l-129-304",
+   "weight": 28.8,
+   "type": "corridor"
+  },
+  {
+   "from": "wc-man-1",
+   "to": "door-man-WC-1",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-325-1",
+   "to": "c-l-129-305",
+   "weight": 42.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-325",
+   "to": "door-325-1",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-324_2",
+   "to": "c-l-129-330",
+   "weight": 42.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-324",
+   "to": "door-324_2",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-woman-WC-1",
+   "to": "door-woman-WC-1-out",
+   "weight": 9.0,
+   "type": "door"
+  },
+  {
+   "from": "door-woman-WC-1-out",
+   "to": "c-l-129-162",
+   "weight": 29.0,
+   "type": "corridor"
+  },
+  {
+   "from": "wc-woman-1",
+   "to": "door-woman-WC-1",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-312",
+   "to": "c-l-129-211",
+   "weight": 15.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-312",
+   "to": "door-312",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-323",
+   "to": "c-r-586-334",
+   "weight": 42.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-323",
+   "to": "door-323",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-man-WC-2",
+   "to": "door-man-WC-2-out",
+   "weight": 9.0,
+   "type": "door"
+  },
+  {
+   "from": "door-man-WC-2-out",
+   "to": "c-r-586-304",
+   "weight": 28.8,
+   "type": "corridor"
+  },
+  {
+   "from": "wc-man-2",
+   "to": "door-man-WC-2",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-322-1",
+   "to": "c-r-586-303",
+   "weight": 42.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-322",
+   "to": "door-322-1",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-woman-WC-2",
+   "to": "door-woman-WC-2-out",
+   "weight": 9.0,
+   "type": "door"
+  },
+  {
+   "from": "door-woman-WC-2-out",
+   "to": "c-r-586-162",
+   "weight": 29.0,
+   "type": "corridor"
+  },
+  {
+   "from": "wc-woman-2",
+   "to": "door-woman-WC-2",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-301",
+   "to": "c-r-586-210",
+   "weight": 15.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-301",
+   "to": "door-301",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-302",
+   "to": "c-r-586-250",
+   "weight": 15.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-302",
+   "to": "door-302",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-326",
+   "to": "c-l-129-132",
+   "weight": 42.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-326",
+   "to": "door-326",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-325-2",
+   "to": "c-l-129-160",
+   "weight": 42.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-325",
+   "to": "door-325-2",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-321",
+   "to": "c-r-586-132",
+   "weight": 42.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-321",
+   "to": "door-321",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-322-2",
+   "to": "c-r-586-162",
+   "weight": 42.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-322",
+   "to": "door-322-2",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-313",
+   "to": "c-t-132-94",
+   "weight": 17.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-313",
+   "to": "door-313",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-314",
+   "to": "c-t-160-94",
+   "weight": 17.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-314",
+   "to": "door-314",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-315",
+   "to": "c-t-246-94",
+   "weight": 17.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-315",
+   "to": "door-315",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-316",
+   "to": "c-t-308-94",
+   "weight": 17.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-316",
+   "to": "door-316",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-317",
+   "to": "c-t-370-94",
+   "weight": 17.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-317",
+   "to": "door-317",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-318",
+   "to": "c-t-428-94",
+   "weight": 17.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-318",
+   "to": "door-318",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-319",
+   "to": "c-t-552-94",
+   "weight": 17.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-319",
+   "to": "door-319",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "door-320",
+   "to": "c-t-581-94",
+   "weight": 17.5,
+   "type": "corridor"
+  },
+  {
+   "from": "room-320",
+   "to": "door-320",
+   "weight": 1,
+   "type": "door"
+  },
+  {
+   "from": "ladder-1",
+   "to": "c-lb",
+   "weight": 5,
+   "type": "stairs"
+  },
+  {
+   "from": "ladder-2",
+   "to": "c-lt",
+   "weight": 5,
+   "type": "stairs"
+  },
+  {
+   "from": "ladder-3",
+   "to": "c-rt",
+   "weight": 5,
+   "type": "stairs"
+  },
+  {
+   "from": "ladder-4",
+   "to": "c-rb",
+   "weight": 5,
+   "type": "stairs"
+  },
+  {
+   "from": "c-lt",
+   "to": "c-l-129-132",
+   "weight": 39.0,
+   "type": "corridor"
+  },
+  {
+   "from": "c-l-129-132",
+   "to": "c-l-129-160",
+   "weight": 28.0,
+   "type": "corridor"
+  },
+  {
+   "from": "c-l-129-160",
+   "to": "c-l-129-162",
+   "weight": 1.0,
+   "type": "corridor"
+  },
+  {
+   "from": "c-l-129-162",
+   "to": "c-l-129-211",
+   "weight": 49.3,
+   "type": "corridor"
+  },
+  {
+   "from": "c-l-129-211",
+   "to": "c-l-129-250",
+   "weight": 39.2,
+   "type": "corridor"
+  },
+  {
+   "from": "c-l-129-250",
+   "to": "c-l-129-304",
+   "weight": 54.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-l-129-304",
+   "to": "c-l-129-305",
+   "weight": 0.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-l-129-305",
+   "to": "c-l-129-330",
+   "weight": 25.0,
+   "type": "corridor"
+  },
+  {
+   "from": "c-l-129-330",
+   "to": "c-l-129-334",
+   "weight": 4.0,
+   "type": "corridor"
+  },
+  {
+   "from": "c-l-129-334",
+   "to": "c-lb",
+   "weight": 37.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-rt",
+   "to": "c-r-586-132",
+   "weight": 38.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-r-586-132",
+   "to": "c-r-586-162",
+   "weight": 29.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-r-586-162",
+   "to": "c-r-586-210",
+   "weight": 48.3,
+   "type": "corridor"
+  },
+  {
+   "from": "c-r-586-210",
+   "to": "c-r-586-250",
+   "weight": 40.2,
+   "type": "corridor"
+  },
+  {
+   "from": "c-r-586-250",
+   "to": "c-r-586-303",
+   "weight": 53.0,
+   "type": "corridor"
+  },
+  {
+   "from": "c-r-586-303",
+   "to": "c-r-586-304",
+   "weight": 1.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-r-586-304",
+   "to": "c-r-586-334",
+   "weight": 29.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-r-586-334",
+   "to": "c-rb",
+   "weight": 37.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-lt",
+   "to": "c-t-132-94",
+   "weight": 3.2,
+   "type": "corridor"
+  },
+  {
+   "from": "c-t-132-94",
+   "to": "c-t-160-94",
+   "weight": 27.8,
+   "type": "corridor"
+  },
+  {
+   "from": "c-t-160-94",
+   "to": "c-t-246-94",
+   "weight": 85.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-t-246-94",
+   "to": "c-t-308-94",
+   "weight": 62.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-t-308-94",
+   "to": "c-t-370-94",
+   "weight": 61.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-t-370-94",
+   "to": "c-t-428-94",
+   "weight": 58.7,
+   "type": "corridor"
+  },
+  {
+   "from": "c-t-428-94",
+   "to": "c-t-552-94",
+   "weight": 124.0,
+   "type": "corridor"
+  },
+  {
+   "from": "c-t-552-94",
+   "to": "c-t-581-94",
+   "weight": 28.6,
+   "type": "corridor"
+  },
+  {
+   "from": "c-t-581-94",
+   "to": "c-rt",
+   "weight": 5.2,
+   "type": "corridor"
+  },
+  {
+   "from": "c-lb",
+   "to": "c-b-132-372",
+   "weight": 3.0,
+   "type": "corridor"
+  },
+  {
+   "from": "c-b-132-372",
+   "to": "c-b-158-372",
+   "weight": 25.8,
+   "type": "corridor"
+  },
+  {
+   "from": "c-b-158-372",
+   "to": "c-b-245-372",
+   "weight": 87.4,
+   "type": "corridor"
+  },
+  {
+   "from": "c-b-245-372",
+   "to": "c-b-308-372",
+   "weight": 62.8,
+   "type": "corridor"
+  },
+  {
+   "from": "c-b-308-372",
+   "to": "c-b-370-372",
+   "weight": 61.5,
+   "type": "corridor"
+  },
+  {
+   "from": "c-b-370-372",
+   "to": "c-b-428-372",
+   "weight": 58.7,
+   "type": "corridor"
+  },
+  {
+   "from": "c-b-428-372",
+   "to": "c-b-552-372",
+   "weight": 124.0,
+   "type": "corridor"
+  },
+  {
+   "from": "c-b-552-372",
+   "to": "c-b-581-372",
+   "weight": 28.8,
+   "type": "corridor"
+  },
+  {
+   "from": "c-b-581-372",
+   "to": "c-rb",
+   "weight": 5.0,
+   "type": "corridor"
+  }
+ ]
+}
