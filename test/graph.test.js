@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validateGraph, assertValidGraph, createGraphIndex, findShortestPath, GraphError } from '../graph.js';
+import { validateGraph, assertValidGraph, createGraphIndex, findShortestPath, GraphError } from '../src/graph.js';
 
 const node = (id, type, floor = 3, x = 0, y = 0) => ({ id, type, floor, x, y });
 const edge = (from, to, weight = 1) => ({ from, to, weight, type: 'corridor' });
@@ -149,12 +149,12 @@ test('разрезанная лестница: между этажами мар�
 // --- Реальные данные здания (data.json + map1/2/3.svg) ---
 
 const read = name => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
-const data = JSON.parse(read('data.json'));
+const data = JSON.parse(read('data/data.json'));
 const FLOORS = [1, 2, 3];
 
 // Комнаты с каждой карты: <path|rect|g id="room-…">; &#39; -> '
 const svgRooms = FLOORS.flatMap(f =>
-    [...read(`map${f}.svg`).matchAll(/<(?:rect|path|g) id="(room-[^"]+)"/g)]
+    [...read(`maps/map${f}.svg`).matchAll(/<(?:rect|path|g) id="(room-[^"]+)"/g)]
         .map(m => `f${f}-${m[1].replaceAll('&#39;', "'")}`));
 
 const idx = createGraphIndex(data);

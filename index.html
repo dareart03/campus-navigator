@@ -16,13 +16,36 @@
     .floor-tabs button.has-route::after { content: ''; position: absolute; top: 4px; right: 4px;
         width: 8px; height: 8px; border-radius: 50%; background: #00FF00; }
 
+    /* Поиск */
+    .search-panel { position: relative; z-index: 20; padding: 8px 10px; background: #2c2c2c; }
+    .search-panel input { width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 16px; color: #fff;
+        background: #3a3a3a; border: 2px solid #555; border-radius: 8px; }
+    .search-panel input:focus { outline: none; border-color: #4da3ff; }
+    .suggestions { position: absolute; left: 10px; right: 10px; top: calc(100% - 2px); margin: 0; padding: 0; list-style: none;
+        max-height: 55vh; overflow-y: auto; background: #2f2f2f; border: 1px solid #555; border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+    .suggestions[hidden] { display: none; }
+    .sug { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px;
+        padding: 4px 4px 4px 14px; cursor: pointer; border-bottom: 1px solid #3d3d3d; }
+    .sug:active { background: #26456b; }
+    .sug-text { min-width: 0; }
+    .sug-main { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sug-sub { font-size: 12px; color: #aaa; }
+    .fav { flex: none; width: 44px; height: 44px; font-size: 22px; color: #ffcc33; background: none; border: 0; cursor: pointer; }
+    .sug-heading { padding: 8px 14px 4px; font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; }
+    .sug-empty { padding: 14px; color: #aaa; font-size: 14px; }
+
     #map-wrap { position: relative; }
+    #map-shield { position: absolute; inset: 0; z-index: 4; background: rgba(0, 0, 0, 0.45); }
+    #map-shield[hidden] { display: none; }
     /* touch-action: none — жесты обрабатываем сами, браузер не должен их перехватывать (скролл, зум страницы) */
-    #map-container { width: 100vw; height: 62vh; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+    /* высота — по пропорциям плана (--map-aspect задаёт app.js), но не больше 62% экрана */
+    #map-container { width: 100%; aspect-ratio: var(--map-aspect, 3 / 2); max-height: 62vh; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
     #map-stage { width: 100%; height: 100%; transform-origin: 0 0; will-change: transform; }
     .floor-map { width: 100%; height: 100%; }
 
-    .map-tools { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+    /* кнопки под картой, чтобы не закрывать комнаты */
+    .map-tools { display: flex; flex-direction: row; justify-content: flex-end; gap: 8px; padding: 6px 10px; }
     .map-tools button { padding: 8px 12px; font-size: 14px; cursor: pointer; color: #fff; border: 1px solid #666;
         border-radius: 8px; background: rgba(40, 40, 40, 0.85); }
     .map-tools button[hidden] { display: none; }
@@ -40,7 +63,7 @@
     /* Комната, выбранная как старт / финиш */
     .start-room { stroke: #00FF00; stroke-width: calc(4px * var(--inv, 1)); }
     .end-room   { stroke: #FF0000; stroke-width: calc(4px * var(--inv, 1)); }
-    .floor-map [id^="room-"] { cursor: pointer; }
+    .floor-map [id^="room-"], .floor-map [id^="man-WC"], .floor-map [id^="woman-WC"], .floor-map [id^="special-WC"] { cursor: pointer; }
     /* Подписи лежат поверх комнат и перехватывали бы клики */
     .floor-map #Texts { pointer-events: none; }
 
@@ -64,9 +87,17 @@
 
   <div id="floor-tabs" class="floor-tabs" role="tablist" aria-label="Этажи"></div>
 
+  <div id="search-panel" class="search-panel">
+    <input id="search" type="search" inputmode="search" enterkeyhint="go" autocomplete="off"
+           placeholder="Откуда? Номер или название" aria-label="Поиск аудитории или места">
+    <ul id="suggestions" class="suggestions" hidden></ul>
+  </div>
+
   <div id="map-wrap">
     <!-- Жесты ловим на map-container; внутри — «сцена», которую двигаем, масштабируем и поворачиваем -->
     <div id="map-container"><div id="map-stage"></div></div>
+    <!-- Пока открыт поиск, закрывает карту: касания по ней не проходят (нет случайных выборов) -->
+    <div id="map-shield" hidden></div>
     <div class="map-tools">
       <button type="button" id="btn-view" aria-label="Вернуть исходный вид карты">⌖ Вид</button>
       <button type="button" id="btn-clear" aria-label="Сбросить маршрут" hidden>✕ Сбросить маршрут</button>
@@ -75,6 +106,6 @@
 
   <div id="route-info" class="route-info hidden"></div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="src/app.js"></script>
 </body>
 </html>

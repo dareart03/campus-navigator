@@ -1,10 +1,17 @@
 import { assertValidGraph, createGraphIndex, findShortestPath, GraphError } from './graph.js';
 import { attachGestures } from './gestures.js';
 import { labelScale } from './viewmath.js';
+import {
+    buildSearchIndex, searchPlaces, toggleFavorite, pushRecent, sanitizeFavorites, sanitizeRecents,
+    loadJSON, saveJSON, FAVORITES_KEY, RECENTS_KEY,
+} from './search.js';
 
 const FLOORS = [1, 2, 3];
 const START_FLOOR = 3;
 const NS = 'http://www.w3.org/2000/svg';
+
+// На что можно нажать на карте: аудитории (room-…) и туалеты (man-WC, woman-WC-1, special-WC …)
+const PLACE_SELECTOR = '#Rooms [id^="room-"], #Rooms [id^="man-WC"], #Rooms [id^="woman-WC"], #Rooms [id^="special-WC"]';
 
 // Размер подписей на карте: желаемая высота цифр на экране в пикселях (мин/макс).
 // На телефоне (сенсорный экран или узкое окно) подписи вдвое мельче, чем на компьютере.
@@ -18,8 +25,8 @@ async function loadMaps() {
     const tabs = document.getElementById('floor-tabs');
 
     for (const floor of FLOORS) {
-        const response = await fetch(`map${floor}.svg`);
-        if (!response.ok) throw new GraphError(`Не удалось загрузить карту этажа ${floor} (map${floor}.svg): ${response.status}`);
+        const response = await fetch(`maps/map${floor}.svg`, { cache: 'no-cache' });
+        if (!response.ok) throw new GraphError(`Не удалось загрузить карту этажа ${floor} (maps/map${floor}.svg): ${response.status}`);
 
         const holder = document.createElement('div');
         holder.className = 'floor-map';
@@ -36,12 +43,21 @@ async function loadMaps() {
         tab.addEventListener('click', () => showFloor(floor));
         tabs.append(tab);
     }
+
+    // Область карты подгоняем под пропорции планов: без пустых полей сверху и снизу,
+    // тогда блок с указаниями оказывается сразу под картой. Берём самый большой из этажей и 8% запаса.
+    const boxes = FLOORS.map(f => stage.querySelector(`#floor-${f} svg`)?.viewBox.baseVal).filter(vb => vb?.width);
+    if (boxes.length) {
+        const w = Math.max(...boxes.map(vb => vb.width));
+        const h = Math.max(...boxes.map(vb => vb.height));
+        document.getElementById('map-container').style.setProperty('--map-aspect', `${w} / ${(h * 1.08).toFixed(1)}`);
+    }
 }
 
 // --- 2. ЗАГРУЗКА ГРАФА (JSON) ---
 async function loadGraph() {
-    const response = await fetch('data.json');
-    if (!response.ok) throw new GraphError(`Не удалось загрузить данные здания (data.json): ${response.status}`);
+    const response = await fetch('data/data.json', { cache: 'no-cache' });
+    if (!response.ok) throw new GraphError(`Не удалось загрузить данные здания (data/data.json): ${response.status}`);
     try {
         return await response.json();
     } catch {
@@ -117,7 +133,7 @@ const graphId = (floor, svgId) => `f${floor}-${svgId}`;
 function roomElement(nodeId) {
     const node = currentIndex.nodes.get(nodeId);
     const svgId = nodeId.replace(/^f\d+-/, '');
-    return [...floorEl(node.floor).querySelectorAll('[id^="room-"]')].find(el => el.id === svgId);
+    return [...floorEl(node.floor).querySelectorAll('[id]')].find(el => el.id === svgId);
 }
 
 function showFloor(floor) {
@@ -152,44 +168,51 @@ function resetRoute() {
 
 function updateTools() {
     document.getElementById('btn-clear').hidden = !currentStart;
+    // Подсказка в поле поиска зависит от того, что выбрано
+    document.getElementById('search').placeholder =
+        (!currentStart || currentEnd) ? 'Откуда? Номер или название' : 'Куда? Номер или название';
 }
 
 // Обычное нажатие на карту (приходит из gestures.js, уже отличённое от жестов и двойного нажатия)
 function handleTap(target) {
-    const room = target?.closest?.('#Rooms [id^="room-"]');
-    if (room) selectRoom(room);
+    const room = target?.closest?.(PLACE_SELECTOR);
+    if (!room) return;
+    const floor = Number(room.closest('.floor-map').dataset.floor);
+    selectNode(graphId(floor, room.id));
 }
 
-function selectRoom(room) {
+// Выбор места: и нажатием на карту, и из поиска. Первый выбор — старт, второй — финиш (строим маршрут).
+function selectNode(nodeId) {
     if (!currentGraph) return; // граф не загружен или не прошёл проверку
-
-    const floor = Number(room.closest('.floor-map').dataset.floor);
-    const nodeId = graphId(floor, room.id);
 
     clearStatus();
 
     if (!currentIndex.adj.has(nodeId)) {
-        showStatus('error', `Для аудитории ${room.id.replace('room-', '')} (${floor} этаж) нет данных в графе`);
+        showStatus('error', `Для ${nodeId} нет данных в графе`);
         return;
     }
 
+    const node = currentIndex.nodes.get(nodeId);
+    const el = roomElement(nodeId);     // у места может не быть фигуры на карте — тогда подсветки нет, маршрут всё равно строится
+
     if (nodeId === currentStart && !currentEnd) {
-        // Повторное нажатие на выбранный старт — отмена выбора
+        // Повторный выбор старта — отмена
         resetRoute();
         return;
     }
 
     if (!currentStart || currentEnd) {
-        // Первый клик или новый выбор после готового маршрута: сбрасываем всё и ставим старт
+        // Первый выбор или новый после готового маршрута: сбрасываем всё и ставим старт
         clearSelection();
         currentStart = nodeId;
         currentEnd = null;
-        room.classList.add('start-room');
+        el?.classList.add('start-room');
+        showFloor(node.floor);
     } else if (nodeId !== currentStart) {
-        // Есть старт, кликнули по другой комнате: это финиш, строим маршрут
+        // Есть старт, выбрали другое место: это финиш, строим маршрут
         currentEnd = nodeId;
-        room.classList.add('end-room');
-        drawRouteBetween(currentStart, currentEnd);
+        el?.classList.add('end-room');
+        if (drawRouteBetween(currentStart, currentEnd)) rememberRoute(currentStart, currentEnd);
     }
     updateTools();
 }
@@ -256,7 +279,7 @@ function drawRouteBetween(startId, endId) {
     if (!result) {
         showStatus('error', `Маршрут из ${roomLabel(startId)} в ${roomLabel(endId)} не найден`,
             ['Одна из аудиторий не связана с остальным зданием']);
-        return;
+        return false;
     }
 
     const segments = splitByFloor(result.path);
@@ -283,9 +306,137 @@ function drawRouteBetween(startId, endId) {
 
     renderRouteInfo(describeSteps(segments, startId, endId));
     showFloor(segments[0].floor); // показываем этаж, с которого начинается путь
+    return true;
 }
 
-// --- 6. СТАРТ ---
+// --- 6. ПОИСК, ИЗБРАННОЕ, НЕДАВНИЕ (F2) ---
+let searchIndex = [];
+let favorites = [];       // id мест
+let recents = [];         // [{ from, to }]
+
+const shortLabel = id => String(roomLabel(id)).split(' — ')[0];
+
+function rememberRoute(from, to) {
+    recents = pushRecent(recents, { from, to });
+    saveJSON(RECENTS_KEY, recents);
+}
+
+// Пока человек печатает, карта закрыта «щитом»: случайные касания не выберут аудиторию и не сдвинут карту
+function setTyping(on) {
+    document.getElementById('map-wrap').classList.toggle('typing', on);
+    document.getElementById('map-shield').hidden = !on;
+    document.getElementById('suggestions').hidden = !on;
+}
+
+function closeSearch() {
+    const input = document.getElementById('search');
+    input.value = '';
+    input.blur();
+    setTyping(false);
+}
+
+function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+}
+
+function placeRow(entry) {
+    const li = el('li', 'sug');
+    li.dataset.place = entry.id;
+    const main = el('div', 'sug-text');
+    main.append(el('div', 'sug-main', entry.label), el('div', 'sug-sub', `${entry.floor} этаж`));
+    const star = el('button', 'fav', favorites.includes(entry.id) ? '★' : '☆');
+    star.type = 'button';
+    star.dataset.fav = entry.id;
+    star.setAttribute('aria-label', favorites.includes(entry.id) ? 'Убрать из избранного' : 'В избранное');
+    li.append(main, star);
+    return li;
+}
+
+function renderSuggestions() {
+    const list = document.getElementById('suggestions');
+    const query = document.getElementById('search').value;
+    list.replaceChildren();
+
+    if (query.trim()) {
+        const found = searchPlaces(searchIndex, query);
+        if (!found.length) list.append(el('li', 'sug-empty', 'Ничего не найдено'));
+        found.forEach(e => list.append(placeRow(e)));
+        return;
+    }
+
+    // Пустой запрос: избранное и недавние маршруты
+    const byId = new Map(searchIndex.map(e => [e.id, e]));
+    if (favorites.length) {
+        list.append(el('li', 'sug-heading', 'Избранное'));
+        favorites.forEach(id => byId.has(id) && list.append(placeRow(byId.get(id))));
+    }
+    if (recents.length) {
+        list.append(el('li', 'sug-heading', 'Недавние маршруты'));
+        recents.forEach((r, i) => {
+            const li = el('li', 'sug');
+            li.dataset.recent = i;
+            li.append(el('div', 'sug-main', `${shortLabel(r.from)} → ${shortLabel(r.to)}`));
+            list.append(li);
+        });
+    }
+    if (!favorites.length && !recents.length) list.append(el('li', 'sug-empty', 'Введите номер аудитории или название'));
+}
+
+function onSuggestionClick(event) {
+    const star = event.target.closest('[data-fav]');
+    if (star) {                                   // звёздочка: только избранное, поле остаётся открытым
+        favorites = toggleFavorite(favorites, star.dataset.fav);
+        saveJSON(FAVORITES_KEY, favorites);
+        renderSuggestions();
+        return;
+    }
+    const place = event.target.closest('[data-place]');
+    if (place) {
+        closeSearch();
+        selectNode(place.dataset.place);
+        return;
+    }
+    const recent = event.target.closest('[data-recent]');
+    if (recent) {                                 // недавний маршрут: строим сразу
+        const { from, to } = recents[Number(recent.dataset.recent)];
+        closeSearch();
+        resetRoute();
+        selectNode(from);
+        selectNode(to);
+    }
+}
+
+function setupSearch() {
+    const input = document.getElementById('search');
+    const list = document.getElementById('suggestions');
+    const valid = new Set(currentGraph.nodes.map(n => n.id));
+
+    searchIndex = buildSearchIndex(currentGraph.nodes);
+    favorites = sanitizeFavorites(loadJSON(FAVORITES_KEY, []), valid);
+    recents = sanitizeRecents(loadJSON(RECENTS_KEY, []), valid);
+
+    input.addEventListener('focus', () => { setTyping(true); renderSuggestions(); });
+    input.addEventListener('input', renderSuggestions);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            const first = list.querySelector('[data-place]');
+            if (first) { closeSearch(); selectNode(first.dataset.place); }
+        } else if (e.key === 'Escape') {
+            e.stopPropagation();                  // Esc закрывает поиск, а не сбрасывает маршрут
+            closeSearch();
+        }
+    });
+    // Не даём списку отобрать фокус у поля до того, как сработает нажатие на строку
+    list.addEventListener('mousedown', e => e.preventDefault());
+    list.addEventListener('click', onSuggestionClick);
+    // Нажатие на затемнённую карту закрывает поиск (и клавиатуру)
+    document.getElementById('map-shield').addEventListener('pointerdown', e => { e.preventDefault(); closeSearch(); });
+}
+
+// --- 7. СТАРТ ---
 window.onload = async () => {
     try {
         await loadMaps();
@@ -303,6 +454,8 @@ window.onload = async () => {
         document.getElementById('btn-view').addEventListener('click', () => gestures.reset());
         document.getElementById('btn-clear').addEventListener('click', resetRoute);
         document.addEventListener('keydown', e => { if (e.key === 'Escape') resetRoute(); });
+        setupSearch();
+        updateTools();
 
         showFloor(START_FLOOR);
         if (warnings.length) showStatus('warning', 'Данные карты загружены с замечаниями', warnings);

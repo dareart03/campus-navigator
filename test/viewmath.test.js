@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { IDENTITY, LIMITS, toScreen, toMap, zoomAbout, rotateAbout, pinch, pan, clampView, labelScale } from '../viewmath.js';
+import { IDENTITY, LIMITS, toScreen, toMap, zoomAbout, rotateAbout, pinch, pan, clampView, labelScale } from '../src/viewmath.js';
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} ≉ ${b}`);
 const nearPt = (p, q) => { near(p.x, q.x); near(p.y, q.y); };
