@@ -6,42 +6,74 @@
   <title>Навигатор по корпусу</title>
   <style>
     body { margin: 0; font-family: sans-serif; background: #222; color: #fff; }
-    #map-container { width: 100vw; height: 80vh; overflow: hidden; }
-    #map-container svg { width: 100%; height: 100%; display: block; }
-    .controls { padding: 10px; text-align: center; }
-    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-    .route-line { stroke: #00FF00; stroke-width: 5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-        /* Стиль для комнаты, которую выбрали как старт */
-    .start-room {
-        stroke: #00FF00; /* Зеленая обводка */
-        stroke-width: 4px;
-        cursor: pointer;
-    }
-    /* Стиль для комнаты, которую выбрали как финиш */
-    .end-room {
-        stroke: #FF0000; /* Красная обводка */
-        stroke-width: 4px;
-        cursor: pointer;
-    }
-    /* Курсор-рука для всех комнат */
-    #Rooms [id^="room-"] { cursor: pointer; }
+
+    /* Переключатель этажей */
+    .floor-tabs { display: flex; gap: 8px; padding: 8px 10px; justify-content: center; background: #2c2c2c; }
+    .floor-tabs button { min-width: 64px; padding: 10px 16px; font-size: 16px; cursor: pointer;
+        background: #3a3a3a; color: #fff; border: 2px solid transparent; border-radius: 8px; position: relative; }
+    .floor-tabs button.active { border-color: #4da3ff; background: #26456b; }
+    /* Точка на кнопке этажа, где проходит маршрут */
+    .floor-tabs button.has-route::after { content: ''; position: absolute; top: 4px; right: 4px;
+        width: 8px; height: 8px; border-radius: 50%; background: #00FF00; }
+
+    #map-wrap { position: relative; }
+    /* touch-action: none — жесты обрабатываем сами, браузер не должен их перехватывать (скролл, зум страницы) */
+    #map-container { width: 100vw; height: 62vh; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+    #map-stage { width: 100%; height: 100%; transform-origin: 0 0; will-change: transform; }
+    .floor-map { width: 100%; height: 100%; }
+
+    .map-tools { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+    .map-tools button { padding: 8px 12px; font-size: 14px; cursor: pointer; color: #fff; border: 1px solid #666;
+        border-radius: 8px; background: rgba(40, 40, 40, 0.85); }
+    .map-tools button[hidden] { display: none; }
+
+    /* Подписи: размер и поворот задаёт app.js через --ls и --rot, чтобы они читались при любом масштабе */
+    .floor-map #Texts path { transform-box: fill-box; transform-origin: center;
+        transform: rotate(calc(var(--rot, 0) * -1deg)) scale(var(--ls, 1)); }
+    .floor-map[hidden] { display: none; }
+    .floor-map svg { width: 100%; height: 100%; display: block; }
+
+    /* --inv = 1 / масштаб на экране: толщина линий на экране не зависит от увеличения */
+    .route-line { stroke: #00FF00; stroke-width: calc(4px * var(--inv, 1)); fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .route-stairs { fill: #00FF00; stroke: #003300; stroke-width: calc(2px * var(--inv, 1)); r: calc(7px * var(--inv, 1)); }
+
+    /* Комната, выбранная как старт / финиш */
+    .start-room { stroke: #00FF00; stroke-width: calc(4px * var(--inv, 1)); }
+    .end-room   { stroke: #FF0000; stroke-width: calc(4px * var(--inv, 1)); }
+    .floor-map [id^="room-"] { cursor: pointer; }
     /* Подписи лежат поверх комнат и перехватывали бы клики */
-    #Texts { pointer-events: none; }
+    .floor-map #Texts { pointer-events: none; }
+
     .status { margin: 0; padding: 10px 14px; font-size: 14px; }
     .status.hidden { display: none; }
     .status ul { margin: 6px 0 0; padding-left: 20px; }
     .status.error { background: #5a1d1d; color: #ffd6d6; }
     .status.warning { background: #5a4a1d; color: #fff1c9; }
+
+    /* Пошаговое описание маршрута */
+    .route-info { padding: 8px 14px 16px; }
+    .route-info.hidden { display: none; }
+    .route-info ol { margin: 6px 0 0; padding-left: 22px; }
+    .route-info li { padding: 6px 0; cursor: pointer; }
+    .route-info li.current { color: #7dff7d; font-weight: bold; }
   </style>
 </head>
 <body>
 
   <div id="status" class="status hidden" role="alert"></div>
 
-  <div id="map-container">
-    <!-- Сюда мы вставим SVG-карту через fetch -->
-    <div id="map-wrapper"></div>
+  <div id="floor-tabs" class="floor-tabs" role="tablist" aria-label="Этажи"></div>
+
+  <div id="map-wrap">
+    <!-- Жесты ловим на map-container; внутри — «сцена», которую двигаем, масштабируем и поворачиваем -->
+    <div id="map-container"><div id="map-stage"></div></div>
+    <div class="map-tools">
+      <button type="button" id="btn-view" aria-label="Вернуть исходный вид карты">⌖ Вид</button>
+      <button type="button" id="btn-clear" aria-label="Сбросить маршрут" hidden>✕ Сбросить маршрут</button>
+    </div>
   </div>
+
+  <div id="route-info" class="route-info hidden"></div>
 
   <script type="module" src="app.js"></script>
 </body>
