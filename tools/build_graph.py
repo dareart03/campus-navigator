@@ -3,7 +3,7 @@
 Собирает граф здания (data.json) из SVG-планов этажей.
 
     python tools/build_graph.py                       # map1.svg, map2.svg, ... из текущей папки
-    python tools/build_graph.py --svg-dir . --out data.json --debug-dir debug
+    python tools/build_graph.py --debug-dir debug
     python tools/build_graph.py --check f3-room-311 f1-room-103   # проверить маршрут
 
 Соглашения о структуре SVG (скрипт ищет группы по их id):
@@ -32,7 +32,7 @@ try:
 except ImportError:
     sys.exit('Не хватает пакетов. Установи: pip install -r tools/requirements.txt')
 
-WC_RE = re.compile(r'^(man|woman)[-_]wc[-_]?\d*$', re.I)
+WC_RE = re.compile(r'^(man|woman|special)[-_]wc[-_]?\d*$', re.I)
 
 
 DIGITS = {
@@ -53,8 +53,11 @@ DIGITS = {
 # (формат: {"dining room": "Столовая"}); значения из файла важнее встроенных.
 DEFAULT_NAMES = {
     'dining room': 'Столовая', "dean's office": 'Кабинет декана', 'wardrobe': 'Гардероб', 'Gym': 'Спортзал',
+    'for-staff': 'Служебное помещение', 'for-stuff': 'Служебное помещение',
 }
-WC_NAMES = {'man': 'Мужской туалет', 'woman': 'Женский туалет'}
+WC_NAMES = {'man': 'Мужской туалет', 'woman': 'Женский туалет', 'special': 'Специальный туалет'}
+CHANGING_RE = re.compile(r"^(men|women)'s[-_ ]changing[-_ ]room[-_ ]?(\d*)$", re.I)
+CHANGING_NAMES = {'men': 'Мужская раздевалка', 'women': 'Женская раздевалка'}
 
 
 def load_names():
@@ -68,9 +71,15 @@ def load_names():
 
 def display_name(label, names):
     """'311' -> '311'; 'dining room' -> 'Столовая'; 'woman-WC-2' -> 'Женский туалет 2'."""
-    m = re.match(r'^(man|woman)[-_]wc[-_]?(\d*)$', label, re.I)
+    if label in names:                                   # явное имя из names.json важнее правил
+        value = names[label]
+        return value[0] if isinstance(value, list) else value
+    m = re.match(r'^(man|woman|special)[-_]wc[-_]?(\d*)$', label, re.I)
     if m:
         return (WC_NAMES[m.group(1).lower()] + (' ' + m.group(2) if m.group(2) else '')).strip()
+    m = CHANGING_RE.match(label)
+    if m:
+        return (CHANGING_NAMES[m.group(1).lower()] + (' ' + m.group(2) if m.group(2) else '')).strip()
     value = names.get(label, label)
     return value[0] if isinstance(value, list) else value      # список: первое — основное название
 
@@ -327,6 +336,23 @@ def parse_floor_colors(path):
     return info
 
 
+def _canon(name):
+    """Для сравнения имён двери и комнаты: регистр, men/man, women/woman, stuff/staff, разделители."""
+    n = name.lower().replace('&#39;', "'")
+    n = re.sub(r"[\s_-]+", '-', n)
+    for a, b in (('women', 'woman'), ('men', 'man'), ('stuff', 'staff')):
+        n = n.replace(a, b)
+    return n
+
+
+def door_matches(door_id, owner):
+    """door-325-1 / door-324_2 / door-man-WC-2 -> относится ли к комнате owner (room-325, man-WC-2)?"""
+    base = door_id[5:] if door_id.startswith('door-') else door_id
+    target = owner[5:] if owner.startswith('room-') else owner
+    candidates = {base, re.sub(r'[-_]\d+$', '', base)}           # с хвостом-номером двери и без него
+    return _canon(target) in {_canon(c) for c in candidates}
+
+
 def parse_floor(path):
     svg = SVG.parse(path)
     if not any(g.lower() == "corridor" for _, gs in walk(svg) for g in gs):
@@ -439,10 +465,7 @@ def build_floor(num, path, margin, prefix, log):
             warnings.append(f'{os.path.basename(path)}: дверь «{did}» не касается ни одной комнаты/лестницы — пропущена')
             continue
         owner = best[0]
-        m = re.match(r'door-(.+?)(?:[-_]\d+)?$', did)      # door-325-1, door-324_2 -> 325 / 324
-        expected = m.group(1) if m else None
-        if expected and not owner.startswith('ladder') and expected != owner.replace('room-', '') \
-                and did != f'door-{owner.replace("room-", "")}':
+        if did.startswith('door-') and not owner.startswith('ladder') and not door_matches(did, owner):
             warnings.append(f'{os.path.basename(path)}: дверь «{did}» стоит у «{owner}» — проверь имя')
         coords = list(line.coords)
         dx, dy = coords[-1][0] - coords[0][0], coords[-1][1] - coords[0][1]
@@ -574,9 +597,9 @@ NAMES = load_names()
 
 def main():
     ap = argparse.ArgumentParser(description='SVG этажей -> data.json (граф здания)')
-    ap.add_argument('--svg-dir', default='.', help='папка с SVG (по умолчанию текущая)')
+    ap.add_argument('--svg-dir', default='maps', help='папка с SVG планами этажей')
     ap.add_argument('--pattern', default='map[0-9]*.svg', help='маска имён файлов этажей')
-    ap.add_argument('--out', default='data.json')
+    ap.add_argument('--out', default='data/data.json')
     ap.add_argument('--margin', type=float, default=6, help='отступ маршрута от стен, px (меньше — если коридоры узкие)')
     ap.add_argument('--stairs-weight', type=float, default=40, help='вес подъёма на один этаж (в px-эквиваленте)')
     ap.add_argument('--debug-dir', default=None, help='куда писать SVG с нарисованным графом для проверки глазами')
