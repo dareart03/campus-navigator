@@ -1,4 +1,6 @@
-import { assertValidGraph, createGraphIndex, findShortestPath, GraphError } from './graph.js';
+import { assertValidGraph, createGraphIndex, findShortestPath, findNearest, GraphError } from './graph.js';
+import { buildShareUrl, parseShareParams } from './share.js';
+import qrcode from './vendor/qrcode.mjs';
 import { attachGestures } from './gestures.js';
 import { labelScale } from './viewmath.js';
 import {
@@ -155,6 +157,7 @@ function clearSelection() {
     const info = document.getElementById('route-info');
     info.className = 'route-info hidden';
     info.replaceChildren();
+    syncUrl(null);
 }
 
 // Полный сброс: выбранные аудитории, линия маршрута, список шагов, сообщения
@@ -212,7 +215,10 @@ function selectNode(nodeId) {
         // Есть старт, выбрали другое место: это финиш, строим маршрут
         currentEnd = nodeId;
         el?.classList.add('end-room');
-        if (drawRouteBetween(currentStart, currentEnd)) rememberRoute(currentStart, currentEnd);
+        if (drawRouteBetween(currentStart, currentEnd)) {
+            rememberRoute(currentStart, currentEnd);
+            syncUrl(currentStart, currentEnd);
+        }
     }
     updateTools();
 }
@@ -259,7 +265,7 @@ function describeSteps(segments, startId, endId) {
     return steps;
 }
 
-function renderRouteInfo(steps) {
+function renderRouteInfo(steps, startId, endId) {
     const info = document.getElementById('route-info');
     info.className = 'route-info';
     info.replaceChildren(Object.assign(document.createElement('strong'), { textContent: 'Маршрут' }));
@@ -270,7 +276,7 @@ function renderRouteInfo(steps) {
         li.addEventListener('click', () => showFloor(s.floor));
         ol.append(li);
     });
-    info.append(ol);
+    info.append(ol, shareBlock(startId, endId));
 }
 
 function drawRouteBetween(startId, endId) {
@@ -304,7 +310,7 @@ function drawRouteBetween(startId, endId) {
         document.getElementById(`tab-${seg.floor}`).classList.add('has-route');
     });
 
-    renderRouteInfo(describeSteps(segments, startId, endId));
+    renderRouteInfo(describeSteps(segments, startId, endId), startId, endId);
     showFloor(segments[0].floor); // показываем этаж, с которого начинается путь
     return true;
 }
@@ -436,7 +442,121 @@ function setupSearch() {
     document.getElementById('map-shield').addEventListener('pointerdown', e => { e.preventDefault(); closeSearch(); });
 }
 
-// --- 7. СТАРТ ---
+// --- 7. БЛИЖАЙШЕЕ МЕСТО (F3) ---
+const POI_TITLES = {
+    'wc-man': 'мужской туалет',
+    'wc-woman': 'женский туалет',
+    'exit': 'выход',
+    'dining': 'столовая',
+};
+
+// От выбранного старта ищем ближайшее место категории poi и сразу строим маршрут до него
+function routeToNearest(poi) {
+    const title = POI_TITLES[poi] ?? poi;
+    if (!currentStart) {
+        showStatus('warning', 'Сначала выберите, откуда идти',
+            [`Нажмите на аудиторию на карте или найдите её в поиске, затем выберите «${title}».`]);
+        return;
+    }
+    const from = currentStart;
+    const found = findNearest(currentIndex, from, poi);
+    if (!found) {
+        showStatus('error', `Не нашла: ${title}`, ['Такого места нет в данных или до него нет пути']);
+        return;
+    }
+    resetRoute();            // убираем прежний маршрут, старт ставим заново
+    selectNode(from);
+    selectNode(found.id);
+    const node = currentIndex.nodes.get(found.id);
+    showStatus('info', `Ближайшее: ${node.label} (${node.floor} этаж)`);
+}
+
+function setupQuickButtons() {
+    document.getElementById('quick').addEventListener('click', e => {
+        const button = e.target.closest('[data-poi]');
+        if (button) routeToNearest(button.dataset.poi);
+    });
+}
+
+// --- 8. ССЫЛКА И QR-КОД (F3) ---
+
+// Адрес страницы без параметров маршрута
+const baseUrl = () => location.origin + location.pathname;
+
+// Держим адресную строку в актуальном состоянии: открытый маршрут — это ссылка, которой можно поделиться
+function syncUrl(from, to) {
+    try {
+        history.replaceState(null, '', from && to ? buildShareUrl(baseUrl(), from, to) : baseUrl());
+    } catch { /* адрес не меняем, если браузер не разрешает */ }
+}
+
+function shareBlock(startId, endId) {
+    const url = buildShareUrl(baseUrl(), startId, endId);
+    const box = el('div', 'share');
+
+    const buttons = el('div', 'share-buttons');
+    const qrButton = el('button', null, 'QR-код');
+    const copyButton = el('button', null, 'Копировать ссылку');
+    [qrButton, copyButton].forEach(b => b.type = 'button');
+    buttons.append(qrButton, copyButton);
+    if (navigator.share) {                                   // системное меню «Поделиться» (на телефоне по https)
+        const shareButton = el('button', null, 'Поделиться');
+        shareButton.type = 'button';
+        shareButton.addEventListener('click', () =>
+            navigator.share({ title: 'Маршрут по корпусу', url }).catch(() => {}));
+        buttons.prepend(shareButton);
+    }
+
+    const field = el('input', 'share-url');
+    field.readOnly = true;
+    field.value = url;
+    field.addEventListener('focus', () => field.select());
+
+    const qrBox = el('div', 'qr');
+    qrBox.hidden = true;
+    qrButton.addEventListener('click', () => {
+        if (!qrBox.childElementCount) {
+            const qr = qrcode(0, 'M');                       // размер подбирается автоматически
+            qr.addData(url);
+            qr.make();
+            qrBox.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+        }
+        qrBox.hidden = !qrBox.hidden;
+    });
+
+    copyButton.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(url);        // работает только по https или localhost
+        } catch {
+            field.select();                                  // запасной вариант для http по IP
+            document.execCommand('copy');
+        }
+        copyButton.textContent = 'Скопировано';
+        setTimeout(() => { copyButton.textContent = 'Копировать ссылку'; }, 1500);
+    });
+
+    box.append(buttons, field, qrBox);
+    return box;
+}
+
+// Если страницу открыли по ссылке с маршрутом — строим его сразу
+function openSharedRoute() {
+    const isPlace = id => {
+        const node = currentIndex.nodes.get(id);
+        return !!node && ['room', 'wc', 'exit'].includes(node.type);
+    };
+    const shared = parseShareParams(location.search, isPlace);
+    if (!shared) return;
+    if (shared.error) {
+        showStatus('warning', 'Ссылку не удалось открыть', [shared.error]);
+        syncUrl(null);
+        return;
+    }
+    selectNode(shared.from);
+    selectNode(shared.to);
+}
+
+// --- 9. СТАРТ ---
 window.onload = async () => {
     try {
         await loadMaps();
@@ -455,7 +575,9 @@ window.onload = async () => {
         document.getElementById('btn-clear').addEventListener('click', resetRoute);
         document.addEventListener('keydown', e => { if (e.key === 'Escape') resetRoute(); });
         setupSearch();
+        setupQuickButtons();
         updateTools();
+        openSharedRoute();
 
         showFloor(START_FLOOR);
         if (warnings.length) showStatus('warning', 'Данные карты загружены с замечаниями', warnings);

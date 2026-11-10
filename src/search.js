@@ -8,10 +8,10 @@ export const MAX_RECENTS = 5;
 export const normalize = s =>
     String(s).toLowerCase().replaceAll('ё', 'е').replace(/[—–-]/g, ' ').replace(/\s+/g, ' ').trim();
 
-// Что можно найти: аудитории и туалеты. Для каждого — название, синонимы (aliases) и имя из SVG.
+// Что можно найти: аудитории, туалеты и выходы. Для каждого — название, синонимы (aliases) и имя из SVG.
 export function buildSearchIndex(nodes) {
     return [...nodes]
-        .filter(n => n.type === 'room' || n.type === 'wc')
+        .filter(n => n.type === 'room' || n.type === 'wc' || n.type === 'exit')
         .map(n => {
             const label = n.label ?? n.id;
             const svgName = n.id.replace(/^f\d+-(room-)?/, '');

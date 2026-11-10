@@ -35,6 +35,11 @@
     .sug-heading { padding: 8px 14px 4px; font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; }
     .sug-empty { padding: 14px; color: #aaa; font-size: 14px; }
 
+    .quick { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
+    .quick button { flex: none; padding: 8px 12px; font-size: 14px; cursor: pointer; color: #fff;
+        background: #3a3a3a; border: 1px solid #666; border-radius: 16px; }
+    .quick button:active { background: #26456b; }
+
     #map-wrap { position: relative; }
     #map-shield { position: absolute; inset: 0; z-index: 4; background: rgba(0, 0, 0, 0.45); }
     #map-shield[hidden] { display: none; }
@@ -71,6 +76,7 @@
     .status.hidden { display: none; }
     .status ul { margin: 6px 0 0; padding-left: 20px; }
     .status.error { background: #5a1d1d; color: #ffd6d6; }
+    .status.info { background: #1d3a5a; color: #d6e8ff; }
     .status.warning { background: #5a4a1d; color: #fff1c9; }
 
     /* Пошаговое описание маршрута */
@@ -78,6 +84,16 @@
     .route-info.hidden { display: none; }
     .route-info ol { margin: 6px 0 0; padding-left: 22px; }
     .route-info li { padding: 6px 0; cursor: pointer; }
+    /* Ссылка и QR-код маршрута */
+    .share { margin-top: 12px; }
+    .share-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    .share-buttons button { padding: 8px 12px; font-size: 14px; cursor: pointer; color: #fff;
+        background: #3a3a3a; border: 1px solid #666; border-radius: 8px; }
+    .share-url { width: 100%; box-sizing: border-box; margin-top: 8px; padding: 8px; font-size: 13px; color: #ccc;
+        background: #2c2c2c; border: 1px solid #555; border-radius: 6px; }
+    .qr { margin-top: 10px; padding: 10px; background: #fff; border-radius: 8px; width: 220px; max-width: 100%; }
+    .qr[hidden] { display: none; }
+    .qr svg { display: block; width: 100%; height: auto; }
     .route-info li.current { color: #7dff7d; font-weight: bold; }
   </style>
 </head>
@@ -91,6 +107,13 @@
     <input id="search" type="search" inputmode="search" enterkeyhint="go" autocomplete="off"
            placeholder="Откуда? Номер или название" aria-label="Поиск аудитории или места">
     <ul id="suggestions" class="suggestions" hidden></ul>
+    <!-- Ближайшее место от выбранного старта -->
+    <div id="quick" class="quick" aria-label="Ближайшее место">
+      <button type="button" data-poi="wc-man">Туалет (М)</button>
+      <button type="button" data-poi="wc-woman">Туалет (Ж)</button>
+      <button type="button" data-poi="exit">Выход</button>
+      <button type="button" data-poi="dining">Столовая</button>
+    </div>
   </div>
 
   <div id="map-wrap">
