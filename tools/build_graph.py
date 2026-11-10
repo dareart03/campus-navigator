@@ -56,6 +56,11 @@ DEFAULT_NAMES = {
     'for-staff': 'Служебное помещение', 'for-stuff': 'Служебное помещение',
 }
 WC_NAMES = {'man': 'Мужской туалет', 'woman': 'Женский туалет', 'special': 'Специальный туалет'}
+# Выход из здания рисуется как дверь в группе Doors с id door-exit-1, door-exit-2 …
+EXIT_DOOR_RE = re.compile(r'^door[-_]exit[-_]?(\d*)$', re.I)
+# Точки интереса: по ним кнопки «ближайший туалет / выход / столовая» ищут место.
+# Туалеты и выходы определяются сами (по имени слоя), комнаты — по этой таблице: имя в SVG (без «room-») -> категория.
+POI_ROOMS = {'dining room': 'dining'}
 CHANGING_RE = re.compile(r"^(men|women)'s[-_ ]changing[-_ ]room[-_ ]?(\d*)$", re.I)
 CHANGING_NAMES = {'men': 'Мужская раздевалка', 'women': 'Женская раздевалка'}
 
@@ -67,6 +72,16 @@ def load_names():
         with open(path, encoding='utf-8') as f:
             names.update(json.load(f))
     return names
+
+
+def poi_of(label, node_type):
+    """Категория точки интереса: wc-man / wc-woman / wc-special / exit / dining или None."""
+    if node_type == 'exit':
+        return 'exit'
+    if node_type == 'wc':
+        m = re.match(r'^(man|woman|special)', label, re.I)
+        return 'wc-' + m.group(1).lower() if m else 'wc'
+    return POI_ROOMS.get(label)
 
 
 def display_name(label, names):
@@ -448,6 +463,7 @@ def build_floor(num, path, margin, prefix, log):
     for rid, (poly, t, label) in info['rooms'].items():
         c = poly.centroid if poly.contains(poly.centroid) else poly.representative_point()
         add_node(pre + rid, c.x, c.y, t, display_name(label, NAMES)); targets[rid] = poly
+        if poi_of(label, t): nodes[pre + rid]['poi'] = poi_of(label, t)
         if aliases_of(label, NAMES): nodes[pre + rid]['aliases'] = aliases_of(label, NAMES)
     for lid, poly in info['ladders'].items():
         c = poly.centroid
@@ -455,8 +471,13 @@ def build_floor(num, path, margin, prefix, log):
 
     approaches = []
     owner_of = {}
+    exits = {}
     for did, line in info['doors'].items():
         mid = line.interpolate(0.5, normalized=True)
+        em = EXIT_DOOR_RE.match(did)
+        if em:                                    # выход: сам становится целью маршрута (точкой интереса)
+            exits[did] = (line, mid, em.group(1))
+            continue
         # владелец двери — ближайшая цель, не дальше 6px
         best = min(targets.items(), key=lambda kv: kv[1].distance(mid), default=None)
         if not best or best[1].distance(mid) > 6:
@@ -491,6 +512,29 @@ def build_floor(num, path, margin, prefix, log):
         add_edge(pre + owner, pre + did, 'door' if not owner.startswith('ladder') else 'stairs', 1)
         approaches.append(apid)
         owner_of[did] = owner
+
+    for did, (line, mid, num_) in exits.items():
+        coords = list(line.coords)
+        dx, dy = coords[-1][0] - coords[0][0], coords[-1][1] - coords[0][1]
+        ln = math.hypot(dx, dy) or 1
+        nx, ny = -dy / ln, dx / ln
+        ap = None
+        for s in [margin + k * 0.5 for k in range(1, 30)]:
+            for sign in (1, -1):
+                p = Point(mid.x + sign * nx * s, mid.y + sign * ny * s)
+                if inside.contains(p):
+                    ap = (p.x, p.y, s); break
+            if ap: break
+        if ap is None:
+            warnings.append(f'{os.path.basename(path)}: у выхода «{did}» нет подхода из проходимой области (corridor)')
+            continue
+        eid = pre + did[5:]                       # door-exit-1 -> f1-exit-1
+        add_node(eid, mid.x, mid.y, 'exit', 'Выход' + (' ' + num_ if num_ else ''))
+        nodes[eid]['poi'] = 'exit'
+        apid = f'{pre}ap-{did}'
+        add_node(apid, ap[0], ap[1], 'corridor')
+        add_edge(eid, apid, 'door', ap[2])
+        approaches.append(apid)
 
     for rid in targets:
         if not any(pre + rid in (e['from'], e['to']) for e in edges):

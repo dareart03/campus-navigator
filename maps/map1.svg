@@ -44,7 +44,7 @@
 <path id="room-109" d="M172.5 386.5H144.5V463H172.5V386.5Z" fill="#FFB67E"/>
 <path id="room-108" d="M236 388.5H172.5V463H236V388.5Z" fill="#FFB67E"/>
 <path id="room-107" d="M305 357H236V463H305V357Z" fill="#FFB67E"/>
-<path id="room-106" d="M493 357.5H427.5V463H493V357.5Z" fill="#FFB67E"/>
+<path id="room-106" d="M496 357H430.5V462.5H496V357Z" fill="#FFB67E"/>
 <path id="room-105" d="M556.5 389H497.5V463H556.5V389Z" fill="#C79595"/>
 <path id="room-104" d="M588.5 396H560.5V463H588.5V396Z" fill="#FFB67E"/>
 <path id="room-103" d="M679.5 396H588V463H679.5V396Z" fill="#C79595"/>
@@ -119,5 +119,7 @@
 <path id="door-ladder-1" d="M118 356V380" stroke-width="5" stroke="#5E5E5E"/>
 <path id="door-ladder-3" d="M618 79L618 95" stroke-width="5" stroke="#5E5E5E"/>
 <path id="door-ladder-4" d="M618 362L618 385" stroke-width="5" stroke="#5E5E5E"/>
+<path id="door-exit-2" d="M311.5 389H328.5" stroke-width="5" stroke="#A6A6A6"/>
+<path id="door-exit-1" d="M406.5 389H420" stroke-width="5" stroke="#A6A6A6"/>
 </g>
 </svg>

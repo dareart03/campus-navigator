@@ -53,6 +53,7 @@
    "floor": 1,
    "type": "room",
    "label": "Столовая",
+   "poi": "dining",
    "aliases": [
     "119"
    ]
@@ -148,8 +149,8 @@
   },
   {
    "id": "f1-room-106",
-   "x": 460.2,
-   "y": 410.2,
+   "x": 463.2,
+   "y": 409.8,
    "floor": 1,
    "type": "room",
    "label": "106"
@@ -203,7 +204,8 @@
    "y": 184.0,
    "floor": 1,
    "type": "wc",
-   "label": "Мужской туалет"
+   "label": "Мужской туалет",
+   "poi": "wc-man"
   },
   {
    "id": "f1-woman-WC",
@@ -211,7 +213,8 @@
    "y": 229.0,
    "floor": 1,
    "type": "wc",
-   "label": "Женский туалет"
+   "label": "Женский туалет",
+   "poi": "wc-woman"
   },
   {
    "id": "f1-special-WC",
@@ -219,7 +222,8 @@
    "y": 250.0,
    "floor": 1,
    "type": "wc",
-   "label": "Специальный туалет"
+   "label": "Специальный туалет",
+   "poi": "wc-special"
   },
   {
    "id": "f1-room-for-staff",
@@ -710,6 +714,38 @@
    "type": "corridor"
   },
   {
+   "id": "f1-exit-2",
+   "x": 320.0,
+   "y": 389.0,
+   "floor": 1,
+   "type": "exit",
+   "label": "Выход 2",
+   "poi": "exit"
+  },
+  {
+   "id": "f1-ap-door-exit-2",
+   "x": 320.0,
+   "y": 382.5,
+   "floor": 1,
+   "type": "corridor"
+  },
+  {
+   "id": "f1-exit-1",
+   "x": 413.2,
+   "y": 389.0,
+   "floor": 1,
+   "type": "exit",
+   "label": "Выход 1",
+   "poi": "exit"
+  },
+  {
+   "id": "f1-ap-door-exit-1",
+   "x": 413.2,
+   "y": 382.5,
+   "floor": 1,
+   "type": "corridor"
+  },
+  {
    "id": "f1-wp-0",
    "x": 155.5,
    "y": 74.0,
@@ -809,55 +845,62 @@
   },
   {
    "id": "f1-wp-14",
+   "x": 502.0,
+   "y": 351.0,
+   "floor": 1,
+   "type": "corridor"
+  },
+  {
+   "id": "f1-wp-15",
    "x": 500.5,
    "y": 350.0,
    "floor": 1,
    "type": "corridor"
   },
   {
-   "id": "f1-wp-15",
+   "id": "f1-wp-16",
    "x": 421.5,
    "y": 350.0,
    "floor": 1,
    "type": "corridor"
   },
   {
-   "id": "f1-wp-16",
+   "id": "f1-wp-17",
    "x": 405.5,
    "y": 350.0,
    "floor": 1,
    "type": "corridor"
   },
   {
-   "id": "f1-wp-17",
+   "id": "f1-wp-18",
    "x": 331.5,
    "y": 350.0,
    "floor": 1,
    "type": "corridor"
   },
   {
-   "id": "f1-wp-18",
+   "id": "f1-wp-19",
    "x": 311.5,
    "y": 350.0,
    "floor": 1,
    "type": "corridor"
   },
   {
-   "id": "f1-wp-19",
+   "id": "f1-wp-20",
    "x": 229.5,
    "y": 350.0,
    "floor": 1,
    "type": "corridor"
   },
   {
-   "id": "f1-wp-20",
+   "id": "f1-wp-21",
    "x": 178.5,
    "y": 380.5,
    "floor": 1,
    "type": "corridor"
   },
   {
-   "id": "f1-wp-21",
+   "id": "f1-wp-22",
    "x": 138.5,
    "y": 380.5,
    "floor": 1,
@@ -1150,7 +1193,8 @@
    "y": 275.5,
    "floor": 2,
    "type": "wc",
-   "label": "Женский туалет 1"
+   "label": "Женский туалет 1",
+   "poi": "wc-woman"
   },
   {
    "id": "f2-woman-WC-2",
@@ -1158,7 +1202,8 @@
    "y": 269.5,
    "floor": 2,
    "type": "wc",
-   "label": "Женский туалет 2"
+   "label": "Женский туалет 2",
+   "poi": "wc-woman"
   },
   {
    "id": "f2-man-WC-1",
@@ -1166,7 +1211,8 @@
    "y": 223.5,
    "floor": 2,
    "type": "wc",
-   "label": "Мужской туалет 1"
+   "label": "Мужской туалет 1",
+   "poi": "wc-man"
   },
   {
    "id": "f2-man-WC-2",
@@ -1174,7 +1220,8 @@
    "y": 201.5,
    "floor": 2,
    "type": "wc",
-   "label": "Мужской туалет 2"
+   "label": "Мужской туалет 2",
+   "poi": "wc-man"
   },
   {
    "id": "f2-ladder-2",
@@ -2236,7 +2283,8 @@
    "y": 198.5,
    "floor": 3,
    "type": "wc",
-   "label": "Женский туалет 1"
+   "label": "Женский туалет 1",
+   "poi": "wc-woman"
   },
   {
    "id": "f3-man-WC-1",
@@ -2244,7 +2292,8 @@
    "y": 263.5,
    "floor": 3,
    "type": "wc",
-   "label": "Мужской туалет 1"
+   "label": "Мужской туалет 1",
+   "poi": "wc-man"
   },
   {
    "id": "f3-woman-WC-2",
@@ -2252,7 +2301,8 @@
    "y": 195.2,
    "floor": 3,
    "type": "wc",
-   "label": "Женский туалет 2"
+   "label": "Женский туалет 2",
+   "poi": "wc-woman"
   },
   {
    "id": "f3-man-WC-2",
@@ -2260,7 +2310,8 @@
    "y": 270.0,
    "floor": 3,
    "type": "wc",
-   "label": "Мужской туалет 2"
+   "label": "Мужской туалет 2",
+   "poi": "wc-man"
   },
   {
    "id": "f3-room-for-stuff",
@@ -3382,6 +3433,18 @@
    "type": "stairs"
   },
   {
+   "from": "f1-exit-2",
+   "to": "f1-ap-door-exit-2",
+   "weight": 6.5,
+   "type": "door"
+  },
+  {
+   "from": "f1-exit-1",
+   "to": "f1-ap-door-exit-1",
+   "weight": 6.5,
+   "type": "door"
+  },
+  {
    "from": "f1-ap-door-113",
    "to": "f1-ap-door-112",
    "weight": 124.9,
@@ -3731,31 +3794,31 @@
   },
   {
    "from": "f1-ap-door-120-1",
-   "to": "f1-wp-17",
+   "to": "f1-wp-18",
    "weight": 91.1,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-120-1",
-   "to": "f1-wp-18",
+   "to": "f1-wp-19",
    "weight": 76.2,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-120-1",
-   "to": "f1-wp-19",
+   "to": "f1-wp-20",
    "weight": 63.0,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-120-1",
-   "to": "f1-wp-20",
+   "to": "f1-wp-21",
    "weight": 118.0,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-120-1",
-   "to": "f1-wp-21",
+   "to": "f1-wp-22",
    "weight": 148.3,
    "type": "corridor"
   },
@@ -3798,18 +3861,24 @@
   {
    "from": "f1-ap-door-120-2",
    "to": "f1-wp-14",
-   "weight": 61.5,
+   "weight": 63.1,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-120-2",
    "to": "f1-wp-15",
-   "weight": 76.4,
+   "weight": 61.5,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-120-2",
    "to": "f1-wp-16",
+   "weight": 76.4,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-ap-door-120-2",
+   "to": "f1-wp-17",
    "weight": 88.2,
    "type": "corridor"
   },
@@ -4020,6 +4089,12 @@
   {
    "from": "f1-ap-door-dining room-2",
    "to": "f1-wp-14",
+   "weight": 181.9,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-ap-door-dining room-2",
+   "to": "f1-wp-15",
    "weight": 181.1,
    "type": "corridor"
   },
@@ -4061,7 +4136,7 @@
   },
   {
    "from": "f1-ap-door-112",
-   "to": "f1-wp-21",
+   "to": "f1-wp-22",
    "weight": 185.0,
    "type": "corridor"
   },
@@ -4097,7 +4172,7 @@
   },
   {
    "from": "f1-ap-door-dean's office",
-   "to": "f1-wp-21",
+   "to": "f1-wp-22",
    "weight": 122.7,
    "type": "corridor"
   },
@@ -4170,18 +4245,24 @@
   {
    "from": "f1-ap-door-102",
    "to": "f1-wp-14",
-   "weight": 116.8,
+   "weight": 115.9,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-102",
    "to": "f1-wp-15",
-   "weight": 191.6,
+   "weight": 116.8,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-102",
    "to": "f1-wp-16",
+   "weight": 191.6,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-ap-door-102",
+   "to": "f1-wp-17",
    "weight": 207.1,
    "type": "corridor"
   },
@@ -4205,13 +4286,13 @@
   },
   {
    "from": "f1-ap-door-110",
-   "to": "f1-wp-19",
+   "to": "f1-wp-20",
    "weight": 102.1,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-110",
-   "to": "f1-wp-21",
+   "to": "f1-wp-22",
    "weight": 6.2,
    "type": "corridor"
   },
@@ -4229,19 +4310,19 @@
   },
   {
    "from": "f1-ap-door-109",
-   "to": "f1-wp-19",
+   "to": "f1-wp-20",
    "weight": 78.2,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-109",
-   "to": "f1-wp-20",
+   "to": "f1-wp-21",
    "weight": 21.0,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-109",
-   "to": "f1-wp-21",
+   "to": "f1-wp-22",
    "weight": 19.0,
    "type": "corridor"
   },
@@ -4259,13 +4340,13 @@
   },
   {
    "from": "f1-ap-door-108",
-   "to": "f1-wp-19",
+   "to": "f1-wp-20",
    "weight": 33.5,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-108",
-   "to": "f1-wp-20",
+   "to": "f1-wp-21",
    "weight": 41.0,
    "type": "corridor"
   },
@@ -4277,13 +4358,13 @@
   },
   {
    "from": "f1-ap-door-107",
-   "to": "f1-wp-18",
+   "to": "f1-wp-19",
    "weight": 23.5,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-107",
-   "to": "f1-wp-19",
+   "to": "f1-wp-20",
    "weight": 58.5,
    "type": "corridor"
   },
@@ -4301,13 +4382,13 @@
   },
   {
    "from": "f1-ap-door-106",
-   "to": "f1-wp-14",
+   "to": "f1-wp-15",
    "weight": 56.5,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-106",
-   "to": "f1-wp-15",
+   "to": "f1-wp-16",
    "weight": 22.5,
    "type": "corridor"
   },
@@ -4362,7 +4443,7 @@
   {
    "from": "f1-ap-door-105",
    "to": "f1-wp-14",
-   "weight": 34.7,
+   "weight": 33.2,
    "type": "corridor"
   },
   {
@@ -4434,6 +4515,12 @@
   {
    "from": "f1-ap-door-103",
    "to": "f1-wp-14",
+   "weight": 110.0,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-ap-door-103",
+   "to": "f1-wp-15",
    "weight": 111.7,
    "type": "corridor"
   },
@@ -4505,7 +4592,7 @@
   },
   {
    "from": "f1-ap-door-ladder-2",
-   "to": "f1-wp-21",
+   "to": "f1-wp-22",
    "weight": 296.3,
    "type": "corridor"
   },
@@ -4523,19 +4610,19 @@
   },
   {
    "from": "f1-ap-door-ladder-1",
-   "to": "f1-wp-19",
+   "to": "f1-wp-20",
    "weight": 105.5,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-ladder-1",
-   "to": "f1-wp-20",
+   "to": "f1-wp-21",
    "weight": 54.5,
    "type": "corridor"
   },
   {
    "from": "f1-ap-door-ladder-1",
-   "to": "f1-wp-21",
+   "to": "f1-wp-22",
    "weight": 18.0,
    "type": "corridor"
   },
@@ -4560,6 +4647,12 @@
   {
    "from": "f1-ap-door-ladder-3",
    "to": "f1-wp-14",
+   "weight": 285.8,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-ap-door-ladder-3",
+   "to": "f1-wp-15",
    "weight": 285.5,
    "type": "corridor"
   },
@@ -4584,7 +4677,37 @@
   {
    "from": "f1-ap-door-ladder-4",
    "to": "f1-wp-14",
+   "weight": 111.8,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-ap-door-ladder-4",
+   "to": "f1-wp-15",
    "weight": 113.5,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-ap-door-exit-2",
+   "to": "f1-wp-18",
+   "weight": 34.5,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-ap-door-exit-2",
+   "to": "f1-wp-19",
+   "weight": 33.6,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-ap-door-exit-1",
+   "to": "f1-wp-16",
+   "weight": 33.5,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-ap-door-exit-1",
+   "to": "f1-wp-17",
+   "weight": 33.4,
    "type": "corridor"
   },
   {
@@ -4643,31 +4766,31 @@
   },
   {
    "from": "f1-wp-6",
-   "to": "f1-wp-17",
+   "to": "f1-wp-18",
    "weight": 199.0,
    "type": "corridor"
   },
   {
    "from": "f1-wp-6",
-   "to": "f1-wp-18",
+   "to": "f1-wp-19",
    "weight": 179.9,
    "type": "corridor"
   },
   {
    "from": "f1-wp-6",
-   "to": "f1-wp-19",
+   "to": "f1-wp-20",
    "weight": 105.2,
    "type": "corridor"
   },
   {
    "from": "f1-wp-6",
-   "to": "f1-wp-20",
+   "to": "f1-wp-21",
    "weight": 94.5,
    "type": "corridor"
   },
   {
    "from": "f1-wp-6",
-   "to": "f1-wp-21",
+   "to": "f1-wp-22",
    "weight": 86.5,
    "type": "corridor"
   },
@@ -4698,18 +4821,24 @@
   {
    "from": "f1-wp-7",
    "to": "f1-wp-14",
-   "weight": 56.0,
+   "weight": 57.0,
    "type": "corridor"
   },
   {
    "from": "f1-wp-7",
    "to": "f1-wp-15",
-   "weight": 96.8,
+   "weight": 56.0,
    "type": "corridor"
   },
   {
    "from": "f1-wp-7",
    "to": "f1-wp-16",
+   "weight": 96.8,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-wp-7",
+   "to": "f1-wp-17",
    "weight": 110.3,
    "type": "corridor"
   },
@@ -4746,6 +4875,12 @@
   {
    "from": "f1-wp-8",
    "to": "f1-wp-14",
+   "weight": 191.8,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-wp-8",
+   "to": "f1-wp-15",
    "weight": 191.4,
    "type": "corridor"
   },
@@ -4764,6 +4899,12 @@
   {
    "from": "f1-wp-9",
    "to": "f1-wp-14",
+   "weight": 258.1,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-wp-9",
+   "to": "f1-wp-15",
    "weight": 257.8,
    "type": "corridor"
   },
@@ -4776,6 +4917,12 @@
   {
    "from": "f1-wp-10",
    "to": "f1-wp-14",
+   "weight": 260.2,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-wp-10",
+   "to": "f1-wp-15",
    "weight": 259.8,
    "type": "corridor"
   },
@@ -4794,6 +4941,12 @@
   {
    "from": "f1-wp-11",
    "to": "f1-wp-14",
+   "weight": 212.4,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-wp-11",
+   "to": "f1-wp-15",
    "weight": 212.1,
    "type": "corridor"
   },
@@ -4806,54 +4959,66 @@
   {
    "from": "f1-wp-12",
    "to": "f1-wp-14",
-   "weight": 100.5,
+   "weight": 99.7,
    "type": "corridor"
   },
   {
    "from": "f1-wp-12",
    "to": "f1-wp-15",
-   "weight": 173.9,
+   "weight": 100.5,
    "type": "corridor"
   },
   {
    "from": "f1-wp-12",
    "to": "f1-wp-16",
+   "weight": 173.9,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-wp-12",
+   "to": "f1-wp-17",
    "weight": 189.3,
    "type": "corridor"
   },
   {
    "from": "f1-wp-13",
    "to": "f1-wp-14",
-   "weight": 73.8,
+   "weight": 72.0,
    "type": "corridor"
   },
   {
-   "from": "f1-wp-15",
-   "to": "f1-wp-16",
-   "weight": 16.0,
+   "from": "f1-wp-14",
+   "to": "f1-wp-15",
+   "weight": 1.8,
    "type": "corridor"
   },
   {
    "from": "f1-wp-16",
    "to": "f1-wp-17",
-   "weight": 74.0,
+   "weight": 16.0,
    "type": "corridor"
   },
   {
    "from": "f1-wp-17",
    "to": "f1-wp-18",
+   "weight": 74.0,
+   "type": "corridor"
+  },
+  {
+   "from": "f1-wp-18",
+   "to": "f1-wp-19",
    "weight": 20.0,
    "type": "corridor"
   },
   {
-   "from": "f1-wp-19",
-   "to": "f1-wp-20",
+   "from": "f1-wp-20",
+   "to": "f1-wp-21",
    "weight": 59.4,
    "type": "corridor"
   },
   {
-   "from": "f1-wp-19",
-   "to": "f1-wp-21",
+   "from": "f1-wp-20",
+   "to": "f1-wp-22",
    "weight": 96.0,
    "type": "corridor"
   },
