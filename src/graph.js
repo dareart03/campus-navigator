@@ -1,6 +1,6 @@
 // Чистая логика графа: валидация и поиск пути. Без DOM, поэтому тестируется в Node.
 
-const NODE_TYPES = new Set(['room', 'door', 'corridor', 'stairs', 'wc']);
+const NODE_TYPES = new Set(['room', 'door', 'corridor', 'stairs', 'wc', 'exit']);
 
 export class GraphError extends Error {
     constructor(message, problems = []) {
@@ -146,4 +146,49 @@ export function findShortestPath(index, startId, endId) {
     const path = [];
     for (let id = endId; id !== undefined; id = previous.get(id)) path.unshift(id);
     return { path, distance: distances.get(endId) };
+}
+
+// Ближайшее место заданной категории (poi: 'wc-man', 'exit', 'dining' …) от точки startId.
+// Один обход Дейкстры от старта: первое подходящее место, до которого дошли, и есть ближайшее по длине пути.
+// Комнаты, как и раньше, только конец маршрута: заходим в них лишь если они сами и есть искомое место.
+// Возвращает { id, path, distance } или null, если такого места нет или до него не дойти.
+export function findNearest(index, startId, poi) {
+    const { adj, rooms, nodes } = index;
+    if (!adj.has(startId)) throw new GraphError(`Неизвестная точка маршрута «${startId}»`, [startId]);
+    const isGoal = id => id !== startId && nodes.get(id).poi === poi;
+
+    const distances = new Map();
+    const previous = new Map();
+    const unvisited = new Set(adj.keys());
+    unvisited.forEach(id => distances.set(id, Infinity));
+    distances.set(startId, 0);
+
+    while (unvisited.size > 0) {
+        let current = null;
+        let minDistance = Infinity;
+        unvisited.forEach(id => {
+            if (distances.get(id) < minDistance) {
+                minDistance = distances.get(id);
+                current = id;
+            }
+        });
+        if (current === null) return null;                 // дальше недостижимо
+
+        if (isGoal(current)) {
+            const path = [];
+            for (let id = current; id !== undefined; id = previous.get(id)) path.unshift(id);
+            return { id: current, path, distance: minDistance };
+        }
+        unvisited.delete(current);
+
+        adj.get(current).forEach(({ to, weight }) => {
+            if (rooms.has(to) && !isGoal(to)) return;      // сквозь чужие комнаты не ходим
+            const newDist = distances.get(current) + weight;
+            if (unvisited.has(to) && newDist < distances.get(to)) {
+                distances.set(to, newDist);
+                previous.set(to, current);
+            }
+        });
+    }
+    return null;
 }

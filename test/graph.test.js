@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validateGraph, assertValidGraph, createGraphIndex, findShortestPath, GraphError } from '../src/graph.js';
+import { validateGraph, assertValidGraph, createGraphIndex, findShortestPath, findNearest, GraphError } from '../src/graph.js';
 
 const node = (id, type, floor = 3, x = 0, y = 0) => ({ id, type, floor, x, y });
 const edge = (from, to, weight = 1) => ({ from, to, weight, type: 'corridor' });
@@ -243,4 +243,91 @@ test('валидация ловит неизвестную аудиторию н
     const { errors } = validateGraph(data, [...svgRooms, 'f2-room-999']);
     assert.equal(errors.length, 1);
     assert.match(errors[0], /999/);
+});
+
+// --- Ближайшее место (F3): синтетический пример ---
+
+// A — старт, у A две двери к коридору; WC1 близко, WC2 далеко; комната D (столовая) рядом, но она — комната
+function poiGraph() {
+    const wc = (id, poi, x) => ({ ...node(id, 'wc', 3, x, 0), poi });
+    return {
+        nodes: [
+            node('room-A', 'room'), node('d-A', 'door'), node('c1', 'corridor'), node('c2', 'corridor'), node('c3', 'corridor'),
+            wc('wc-near', 'wc-man', 1), wc('wc-far', 'wc-man', 2), wc('wc-woman', 'wc-woman', 3),
+            { ...node('room-D', 'room'), poi: 'dining' }, node('d-D', 'door'),
+            node('room-X', 'room'), node('d-X1', 'door'), node('d-X2', 'door'),
+        ],
+        edges: [
+            edge('room-A', 'd-A'), edge('d-A', 'c1', 1), edge('c1', 'c2', 5), edge('c2', 'c3', 5),
+            edge('c1', 'wc-near', 8), edge('c3', 'wc-far', 1), edge('c2', 'wc-woman', 2),
+            edge('c3', 'd-D', 1), edge('d-D', 'room-D', 1),
+            // X — комната с двумя дверями: «коротким путём» через неё к wc-near ходить нельзя
+            edge('c1', 'd-X1', 1), edge('d-X1', 'room-X', 1), edge('room-X', 'd-X2', 1), edge('d-X2', 'wc-near', 1),
+        ],
+    };
+}
+
+test('ближайшее место: выбирается самое близкое по длине пути', () => {
+    const idx = createGraphIndex(poiGraph());
+    const found = findNearest(idx, 'room-A', 'wc-man');
+    assert.equal(found.id, 'wc-near');
+    assert.equal(found.distance, 10);                  // 1 + 1 + 8; через комнату X было бы 6, но сквозь комнату нельзя
+    assert.deepEqual(found.path, ['room-A', 'd-A', 'c1', 'wc-near']);
+});
+
+test('ближайшее место: категории не смешиваются', () => {
+    const idx = createGraphIndex(poiGraph());
+    assert.equal(findNearest(idx, 'room-A', 'wc-woman').id, 'wc-woman');
+});
+
+test('ближайшее место: цель-комната (столовая) достижима, но сквозь неё не ходят', () => {
+    const idx = createGraphIndex(poiGraph());
+    const found = findNearest(idx, 'room-A', 'dining');
+    assert.equal(found.id, 'room-D');
+    assert.ok(!found.path.slice(1, -1).some(id => idx.rooms.has(id)));
+});
+
+test('ближайшее место: нет такой категории или нет пути — null', () => {
+    const idx = createGraphIndex(poiGraph());
+    assert.equal(findNearest(idx, 'room-A', 'exit'), null);
+    const g = poiGraph();
+    g.edges = g.edges.filter(e => !(e.from === 'room-A'));       // A отрезана от здания
+    assert.equal(findNearest(createGraphIndex(g), 'room-A', 'wc-man'), null);
+});
+
+test('ближайшее место: неизвестный старт — понятная ошибка', () => {
+    assert.throws(() => findNearest(createGraphIndex(poiGraph()), 'нет-такой', 'exit'), GraphError);
+});
+
+// --- Ближайшее место на реальных данных ---
+
+test('в данных есть выходы, столовая и туалеты обоих видов', () => {
+    for (const poi of ['exit', 'dining', 'wc-man', 'wc-woman']) {
+        assert.ok(data.nodes.some(n => n.poi === poi), `в data.json нет места категории ${poi}`);
+    }
+    assert.ok(data.nodes.filter(n => n.poi === 'exit').length >= 2, 'ожидалось не меньше двух выходов');
+});
+
+test('ближайшее совпадает с полным перебором всех мест категории (перекрёстная проверка)', () => {
+    const starts = ['f3-room-311', 'f2-room-201', 'f1-room-103', 'f3-room-326'].filter(id => idx.nodes.has(id));
+    for (const start of starts) {
+        for (const poi of ['exit', 'dining', 'wc-man', 'wc-woman']) {
+            const found = findNearest(idx, start, poi);
+            const best = data.nodes.filter(n => n.poi === poi && n.id !== start)
+                .map(n => findShortestPath(idx, start, n.id)?.distance ?? Infinity);
+            assert.ok(found, `${start}: нет ${poi}`);
+            assert.ok(Math.abs(found.distance - Math.min(...best)) < 1e-6, `${start} → ${poi}: не самое близкое`);
+        }
+    }
+});
+
+test('от аудитории 311 на 3 этаже ближайший туалет находится на том же этаже', () => {
+    assert.equal(floorOf(findNearest(idx, 'f3-room-311', 'wc-woman').id), 3);
+});
+
+test('выход находится на 1 этаже, путь от 3 этажа идёт по порядку этажей', () => {
+    const found = findNearest(idx, 'f3-room-311', 'exit');
+    assert.equal(floorOf(found.id), 1);
+    const floors = found.path.map(floorOf).filter((f, i, a) => i === 0 || f !== a[i - 1]);
+    assert.deepEqual(floors, [3, 2, 1]);
 });
