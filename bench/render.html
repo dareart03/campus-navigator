@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Замер отрисовки</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body { font: 14px sans-serif; margin: 12px; }
+  #box { width: 360px; height: 480px; overflow: hidden; border: 1px solid #888; position: relative; }
+  #stage { transform-origin: 0 0; }
+  #stage svg { width: 360px; display: block; }
+  rect.r { fill: #e8eefc; stroke: #5b7bd5; stroke-width: 0.6; }
+  path { fill: none; stroke: #999; }
+  /* как в приложении: подписи (в #Texts) масштабируются и поворачиваются через CSS-переменные */
+  #Texts path { fill: #222; stroke: none; transform-box: fill-box; transform-origin: center;
+    transform: rotate(calc(var(--rot, 0) * -1deg)) scale(var(--ls, 1)); }
+</style></head><body>
+<p>Замер отрисовки: <a href="?rooms=300&cull=1">300 с отсечением</a> · <a href="?rooms=300&cull=0">300 без</a> ·
+<a href="?rooms=1000&cull=1">1000 с отсечением</a> · <a href="?rooms=1000&cull=0">1000 без</a></p>
+<div id="box"><div id="stage"></div></div>
+<pre id="out">идёт замер…</pre>
+<script type="module">
+import { makeBuilding } from './synthetic.mjs';
+import { invertMatrix, visibleRect, updateVisibility } from '../src/culling.js';
+
+const q = new URLSearchParams(location.search);
+const N = Number(q.get('rooms') || 300), CULL = q.get('cull') !== '0', MODE = q.get('mode') || 'detach';
+const { svgSize, boxes } = makeBuilding(N);
+
+// Рисуем план: каждая аудитория = прямоугольник в #Rooms, подпись в #Texts, дверь в #Doors
+const ns = 'http://www.w3.org/2000/svg';
+const svg = document.createElementNS(ns, 'svg');
+svg.style.height = (360 * svgSize.h / svgSize.w) + 'px';
+svg.setAttribute('viewBox', `0 0 ${svgSize.w} ${svgSize.h}`);
+const g = id => { const el = document.createElementNS(ns, 'g'); el.id = id; svg.append(el); return el; };
+const rooms = g('Rooms'), texts = g('Texts'), doors = g('Doors');
+for (const b of boxes) {
+    const r = document.createElementNS(ns, 'rect');
+    r.setAttribute('class', 'r'); r.id = b.id;
+    ['x', 'y', 'width', 'height'].forEach(k => r.setAttribute(k, b[k]));
+    rooms.append(r);
+    const t = document.createElementNS(ns, 'path');   // подпись в приложении — тоже контур (path), а не text
+    const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+    t.setAttribute('d', `M${cx - 6} ${cy - 3}h3v6h-3zM${cx - 1.5} ${cy - 3}h3v6h-3zM${cx + 3} ${cy - 3}h3v6h-3z`);
+    texts.append(t);
+    const d = document.createElementNS(ns, 'path');
+    d.setAttribute('d', `M${b.x + b.width / 2 - 3} ${b.y + b.height} h6`);
+    doors.append(d);
+}
+document.getElementById('stage').append(svg);
+
+const items = [...svg.querySelectorAll('#Rooms > *, #Texts > *, #Doors > *')].map(el => {
+    const b = el.getBBox();
+    return { el, parent: el.parentNode, box: { x: b.x, y: b.y, width: b.width, height: b.height }, visible: true };
+});
+
+const box = document.getElementById('box'), stage = document.getElementById('stage');
+function setView(s, tx, ty) {
+    stage.style.setProperty('--ls', (1 / s * 3).toFixed(3));   // как applyView: размер подписей зависит от масштаба
+    stage.style.setProperty('--rot', '0');
+    stage.style.transform = `translate(${tx}px,${ty}px) scale(${s})`;
+    if (!CULL) return;
+    const inv = invertMatrix(svg.getScreenCTM());
+    const r = box.getBoundingClientRect();
+    const rect = visibleRect(inv, { left: r.left, top: r.top, width: r.width, height: r.height }, 30);
+    updateVisibility(items, rect).forEach(it => {
+        if (MODE === 'detach') { if (it.visible) it.parent.append(it.el); else it.el.remove(); }   // убираем из DOM совсем
+        else it.el.style.display = it.visible ? '' : 'none';
+    });
+}
+
+// Сценарий: 150 кадров щипка-масштабирования с проездом по карте (каждый кадр меняет --ls у всех подписей). Время кадра = от начала setView до следующего rAF.
+const frames = [];
+const nextFrame = () => new Promise(r => requestAnimationFrame(r));
+async function run() {
+    await nextFrame();
+    const S = 4, W = 360 * S, H = parseFloat(svg.style.height) * S;
+    for (let i = 0; i < 150; i++) {
+        const k = i / 149;
+        const sc = 3 + 2 * Math.sin(k * 12);                 // масштаб гуляет 1…5: как при щипке
+        const t0 = performance.now();
+        setView(sc, -k * (360 * sc - 360), -k * (parseFloat(svg.style.height) * sc - 480));
+        await nextFrame();
+        frames.push(performance.now() - t0);
+    }
+    const m = Object.fromEntries((await window.__metrics?.() ?? []).map(x => [x.name, x.value]));
+    const sorted = [...frames].sort((a, b) => a - b);
+    const avg = frames.reduce((a, b) => a + b, 0) / frames.length;
+    const shown = items.filter(i => i.visible).length;
+    const res = { rooms: N, cull: CULL, mode: MODE, elements: items.length, drawnAtEnd: CULL ? shown : items.length,
+        avgMs: +avg.toFixed(2), p95Ms: +sorted[Math.floor(sorted.length * 0.95)].toFixed(2), maxMs: +sorted.at(-1).toFixed(2) };
+    window.__result = res;
+    document.getElementById('out').textContent =
+        `аудиторий: ${N}, отсечение: ${CULL ? 'вкл' : 'выкл'}\nэлементов на плане: ${res.elements}, рисуется в конце: ${res.drawnAtEnd}\n` +
+        `время кадра: среднее ${res.avgMs} мс, p95 ${res.p95Ms} мс, максимум ${res.maxMs} мс`;
+}
+run();
+</script></body></html>

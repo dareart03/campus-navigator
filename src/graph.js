@@ -1,4 +1,5 @@
 // Чистая логика графа: валидация и поиск пути. Без DOM, поэтому тестируется в Node.
+import { MinHeap } from './heap.js';
 
 const NODE_TYPES = new Set(['room', 'door', 'corridor', 'stairs', 'wc', 'exit']);
 
@@ -103,7 +104,41 @@ export function createGraphIndex(graph) {
     return { adj, rooms, nodes };
 }
 
-// Дейкстра. Комнаты — только начало и конец маршрута, сквозь них ходить нельзя
+// Общий обход Дейкстры с бинарной кучей: O((V + E) log V) вместо O(V²) при поиске минимума перебором.
+// isGoal(id) — узел, на котором останавливаемся; canEnter(id) — можно ли входить в узел (комнаты только как цель).
+// Возвращает { id, path, distance } или null. Куча хранит записи [расстояние, id]; устаревшие записи пропускаем.
+function dijkstra(index, startId, isGoal, canEnter) {
+    const { adj } = index;
+    const distances = new Map([[startId, 0]]);
+    const previous = new Map();
+    const done = new Set();
+    const heap = new MinHeap();
+    heap.push(0, startId);
+
+    while (heap.size > 0) {
+        const [dist, current] = heap.pop();
+        if (done.has(current)) continue;
+        if (isGoal(current)) {
+            const path = [];
+            for (let id = current; id !== undefined; id = previous.get(id)) path.unshift(id);
+            return { id: current, path, distance: dist };
+        }
+        done.add(current);
+
+        for (const { to, weight } of adj.get(current)) {
+            if (done.has(to) || !canEnter(to)) continue;
+            const nd = dist + weight;
+            if (nd < (distances.get(to) ?? Infinity)) {
+                distances.set(to, nd);
+                previous.set(to, current);
+                heap.push(nd, to);
+            }
+        }
+    }
+    return null;
+}
+
+// Кратчайший путь. Комнаты — только начало и конец маршрута, сквозь них ходить нельзя
 // (иначе у комнаты с двумя дверями получается «короткий путь» через неё).
 // Возвращает { path, distance } или null, если пути нет.
 export function findShortestPath(index, startId, endId) {
@@ -111,84 +146,17 @@ export function findShortestPath(index, startId, endId) {
     [startId, endId].forEach(id => {
         if (!adj.has(id)) throw new GraphError(`Неизвестная точка маршрута «${id}»`, [id]);
     });
-
-    const distances = new Map();
-    const previous = new Map();
-    const unvisited = new Set(adj.keys());
-    unvisited.forEach(id => distances.set(id, Infinity));
-    distances.set(startId, 0);
-
-    while (unvisited.size > 0) {
-        let current = null;
-        let minDistance = Infinity;
-        unvisited.forEach(id => {
-            if (distances.get(id) < minDistance) {
-                minDistance = distances.get(id);
-                current = id;
-            }
-        });
-
-        if (current === null || current === endId) break;
-        unvisited.delete(current);
-
-        adj.get(current).forEach(({ to, weight }) => {
-            if (rooms.has(to) && to !== endId) return;
-            const newDist = distances.get(current) + weight;
-            if (unvisited.has(to) && newDist < distances.get(to)) {
-                distances.set(to, newDist);
-                previous.set(to, current);
-            }
-        });
-    }
-
-    if (distances.get(endId) === Infinity) return null;
-
-    const path = [];
-    for (let id = endId; id !== undefined; id = previous.get(id)) path.unshift(id);
-    return { path, distance: distances.get(endId) };
+    const found = dijkstra(index, startId, id => id === endId, id => !rooms.has(id) || id === endId);
+    return found && { path: found.path, distance: found.distance };
 }
 
 // Ближайшее место заданной категории (poi: 'wc-man', 'exit', 'dining' …) от точки startId.
-// Один обход Дейкстры от старта: первое подходящее место, до которого дошли, и есть ближайшее по длине пути.
+// Один обход от старта: первое подходящее место, до которого дошли, и есть ближайшее по длине пути.
 // Комнаты, как и раньше, только конец маршрута: заходим в них лишь если они сами и есть искомое место.
 // Возвращает { id, path, distance } или null, если такого места нет или до него не дойти.
 export function findNearest(index, startId, poi) {
     const { adj, rooms, nodes } = index;
     if (!adj.has(startId)) throw new GraphError(`Неизвестная точка маршрута «${startId}»`, [startId]);
     const isGoal = id => id !== startId && nodes.get(id).poi === poi;
-
-    const distances = new Map();
-    const previous = new Map();
-    const unvisited = new Set(adj.keys());
-    unvisited.forEach(id => distances.set(id, Infinity));
-    distances.set(startId, 0);
-
-    while (unvisited.size > 0) {
-        let current = null;
-        let minDistance = Infinity;
-        unvisited.forEach(id => {
-            if (distances.get(id) < minDistance) {
-                minDistance = distances.get(id);
-                current = id;
-            }
-        });
-        if (current === null) return null;                 // дальше недостижимо
-
-        if (isGoal(current)) {
-            const path = [];
-            for (let id = current; id !== undefined; id = previous.get(id)) path.unshift(id);
-            return { id: current, path, distance: minDistance };
-        }
-        unvisited.delete(current);
-
-        adj.get(current).forEach(({ to, weight }) => {
-            if (rooms.has(to) && !isGoal(to)) return;      // сквозь чужие комнаты не ходим
-            const newDist = distances.get(current) + weight;
-            if (unvisited.has(to) && newDist < distances.get(to)) {
-                distances.set(to, newDist);
-                previous.set(to, current);
-            }
-        });
-    }
-    return null;
+    return dijkstra(index, startId, isGoal, id => !rooms.has(id) || isGoal(id));
 }

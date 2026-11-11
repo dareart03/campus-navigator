@@ -3,6 +3,7 @@ import { buildShareUrl, parseShareParams } from './share.js';
 import qrcode from './vendor/qrcode.mjs';
 import { attachGestures } from './gestures.js';
 import { labelScale } from './viewmath.js';
+import { invertMatrix, visibleRect, updateVisibility } from './culling.js';
 import {
     buildSearchIndex, searchPlaces, toggleFavorite, pushRecent, sanitizeFavorites, sanitizeRecents,
     loadJSON, saveJSON, FAVORITES_KEY, RECENTS_KEY,
@@ -123,6 +124,77 @@ function applyView(v) {
     stage.style.setProperty('--ls', labelScale(v.s, k, isPhone() ? LABEL_SIZE_PHONE : LABEL_SIZE_DESKTOP).toFixed(3));
     stage.style.setProperty('--rot', (v.r * 180 / Math.PI).toFixed(2));
     stage.style.setProperty('--inv', (1 / (k * v.s)).toFixed(4));
+    cullOffscreen();
+}
+
+// --- ОТСЕЧЕНИЕ ЗА ЭКРАНОМ (T3) ---
+// Для каждого этажа один раз запоминаем рамки комнат, подписей и дверей; на каждом изменении вида
+// убираем из DOM те, что не попали в видимый прямоугольник, и возвращаем, когда они снова на экране.
+// Замеры (bench/render.html) показали: display:none почти не помогает — браузер всё равно пересчитывает
+// стили у скрытых элементов при смене --ls. А удаление из DOM даёт выигрыш в 3–4 раза.
+// На месте убранного элемента остаётся пустой комментарий, поэтому порядок в SVG не меняется.
+// Отключается параметром ?cull=0 (для сравнения на защите).
+const CULL_SELECTOR = '#Rooms > *, #Texts > *, #Doors > *';
+const CULL_PAD = 30;           // запас в единицах SVG: подписи вырастают из рамки за счёт --ls
+const cullEnabled = new URLSearchParams(location.search).get('cull') !== '0';
+const cullIndex = new Map();   // этаж -> { items: [{ el, slot, box, visible }], byId: Map }
+const statsEnabled = new URLSearchParams(location.search).has('stats');   // читаем один раз: ссылка маршрута потом перезапишет адрес
+const stats = { total: 0, visible: 0, ms: 0 };
+const isPinned = it => it.el.classList.contains('start-room') || it.el.classList.contains('end-room');
+
+function buildCullIndex(floor) {
+    const items = [], byId = new Map();
+    floorEl(floor).querySelectorAll(CULL_SELECTOR).forEach(el => {
+        try {
+            const b = el.getBBox();
+            const it = { el, slot: null, box: { x: b.x, y: b.y, width: b.width, height: b.height }, visible: true };
+            items.push(it);
+            if (el.id) byId.set(el.id, el);
+        } catch { /* элемент без геометрии: не трогаем */ }
+    });
+    const index = { items, byId };
+    cullIndex.set(floor, index);
+    return index;
+}
+
+function setAttached(it, attached) {
+    if (attached) {
+        if (it.slot?.parentNode) it.slot.replaceWith(it.el);
+    } else if (it.el.parentNode) {
+        it.slot ??= document.createComment('');
+        it.el.replaceWith(it.slot);
+    }
+}
+
+function cullOffscreen() {
+    const holder = floorEl(currentFloor);
+    const svg = holder?.querySelector('svg');
+    if (!cullEnabled || !svg || holder.hidden) return;
+    const t0 = performance.now();
+    const { items } = cullIndex.get(currentFloor) ?? buildCullIndex(currentFloor);
+    const ctm = svg.getScreenCTM();
+    const inv = ctm && invertMatrix(ctm);
+    if (!inv) return;
+    const r = document.getElementById('map-container').getBoundingClientRect();
+    const rect = visibleRect(inv, { left: r.left, top: r.top, width: r.width, height: r.height }, CULL_PAD);
+    updateVisibility(items, rect, isPinned).forEach(it => setAttached(it, it.visible));
+    stats.total = items.length;
+    stats.visible = items.reduce((n, it) => n + (it.visible ? 1 : 0), 0);
+    stats.ms = performance.now() - t0;
+    renderStats();
+}
+
+// Счётчик для защиты: открыть сайт с ?stats=1 — в углу карты видно, сколько элементов нарисовано
+function renderStats() {
+    if (!statsEnabled) return;
+    let box = document.getElementById('stats');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'stats';
+        box.style.cssText = 'position:absolute;left:6px;top:6px;z-index:5;background:#000a;color:#fff;font:11px monospace;padding:3px 6px;border-radius:4px;pointer-events:none';
+        document.getElementById('map-container').append(box);
+    }
+    box.textContent = `рисуется ${stats.visible} из ${stats.total} · отсечение ${stats.ms.toFixed(2)} мс`;
 }
 
 // --- 3. ЭТАЖИ ---
@@ -135,7 +207,8 @@ const graphId = (floor, svgId) => `f${floor}-${svgId}`;
 function roomElement(nodeId) {
     const node = currentIndex.nodes.get(nodeId);
     const svgId = nodeId.replace(/^f\d+-/, '');
-    return [...floorEl(node.floor).querySelectorAll('[id]')].find(el => el.id === svgId);
+    return cullIndex.get(node.floor)?.byId.get(svgId)      // элемент мог быть убран отсечением — берём из индекса
+        ?? [...floorEl(node.floor).querySelectorAll('[id]')].find(el => el.id === svgId);
 }
 
 function showFloor(floor) {
@@ -146,11 +219,13 @@ function showFloor(floor) {
     });
     document.querySelectorAll('#route-info li').forEach(li =>
         li.classList.toggle('current', Number(li.dataset.floor) === floor));
+    cullOffscreen();
     gestures?.refresh(); // у этажей может быть чуть другой размер SVG — пересчитать подписи
 }
 
 // --- 4. ОБРАБОТКА КЛИКОВ ПО КОМНАТАМ ---
 function clearSelection() {
+    cullIndex.forEach(({ items }) => items.forEach(it => it.el.classList.remove('start-room', 'end-room')));   // в т.ч. убранные из DOM
     document.querySelectorAll('.start-room, .end-room').forEach(el => el.classList.remove('start-room', 'end-room'));
     document.querySelectorAll('.route-line, .route-stairs').forEach(el => el.remove());
     document.querySelectorAll('.floor-tabs button').forEach(b => b.classList.remove('has-route'));
