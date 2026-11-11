@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import qrcode from '../src/vendor/qrcode.mjs';
+import qrcode from '../src/vendor/qrcode.js';
 import { buildShareUrl, parseShareParams } from '../src/share.js';
 
 const known = new Set(['f3-room-311', 'f1-room-dining room', "f1-room-dean's office", 'f1-exit-1']);

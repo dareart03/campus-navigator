@@ -17,14 +17,25 @@
         width: 8px; height: 8px; border-radius: 50%; background: #00FF00; }
 
     /* Поиск */
-    .search-panel { position: relative; z-index: 20; padding: 8px 10px; background: #2c2c2c; }
-    .search-panel input { width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 16px; color: #fff;
+    .search-panel { padding: 8px 10px; background: #2c2c2c; }
+    /* На карте «поле поиска» — кнопка: нажатие открывает отдельный экран поиска */
+    .search-trigger { display: block; width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 16px; text-align: left;
+        color: #aaa; background: #3a3a3a; border: 2px solid #555; border-radius: 8px; cursor: pointer; }
+    .search-trigger:active { border-color: #4da3ff; }
+
+    /* Отдельные экраны (поиск, «поделиться») лежат поверх карты на весь экран; карта под ними не теряет вид */
+    .screen { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: #222; }
+    .screen[hidden] { display: none; }
+    .screen-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #2c2c2c; }
+    .screen-head h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    .screen-head input { flex: 1; min-width: 0; padding: 12px 14px; font-size: 16px; color: #fff;
         background: #3a3a3a; border: 2px solid #555; border-radius: 8px; }
-    .search-panel input:focus { outline: none; border-color: #4da3ff; }
-    .suggestions { position: absolute; left: 10px; right: 10px; top: calc(100% - 2px); margin: 0; padding: 0; list-style: none;
-        max-height: 55vh; overflow-y: auto; background: #2f2f2f; border: 1px solid #555; border-radius: 8px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
-    .suggestions[hidden] { display: none; }
+    .screen-head input:focus { outline: none; border-color: #4da3ff; }
+    .back { flex: none; min-width: 44px; height: 44px; font-size: 22px; line-height: 1; cursor: pointer; color: #fff;
+        background: #3a3a3a; border: 1px solid #666; border-radius: 8px; }
+    .screen-body { flex: 1; overflow-y: auto; padding: 0 0 24px; }
+    .screen-body.padded { padding: 12px 14px 24px; }
+    .suggestions { margin: 0; padding: 0; list-style: none; }
     .sug { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px;
         padding: 4px 4px 4px 14px; cursor: pointer; border-bottom: 1px solid #3d3d3d; }
     .sug:active { background: #26456b; }
@@ -41,8 +52,6 @@
     .quick button:active { background: #26456b; }
 
     #map-wrap { position: relative; }
-    #map-shield { position: absolute; inset: 0; z-index: 4; background: rgba(0, 0, 0, 0.45); }
-    #map-shield[hidden] { display: none; }
     /* touch-action: none — жесты обрабатываем сами, браузер не должен их перехватывать (скролл, зум страницы) */
     /* высота — по пропорциям плана (--map-aspect задаёт app.js), но не больше 62% экрана */
     #map-container { position: relative; width: 100%; aspect-ratio: var(--map-aspect, 3 / 2); max-height: 62vh; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -54,6 +63,7 @@
     .map-tools button { padding: 8px 12px; font-size: 14px; cursor: pointer; color: #fff; border: 1px solid #666;
         border-radius: 8px; background: rgba(40, 40, 40, 0.85); }
     .map-tools button[hidden] { display: none; }
+    .map-tools { flex-wrap: wrap; }
 
     /* Подписи: размер и поворот задаёт app.js через --ls и --rot, чтобы они читались при любом масштабе */
     .floor-map #Texts path { transform-box: fill-box; transform-origin: center;
@@ -85,7 +95,7 @@
     .route-info ol { margin: 6px 0 0; padding-left: 22px; }
     .route-info li { padding: 6px 0; cursor: pointer; }
     /* Ссылка и QR-код маршрута */
-    .share { margin-top: 12px; }
+    .share { margin-top: 8px; }
     .share-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
     .share-buttons button { padding: 8px 12px; font-size: 14px; cursor: pointer; color: #fff;
         background: #3a3a3a; border: 1px solid #666; border-radius: 8px; }
@@ -93,6 +103,8 @@
         background: #2c2c2c; border: 1px solid #555; border-radius: 6px; }
     .qr { margin-top: 10px; padding: 10px; background: #fff; border-radius: 8px; width: 220px; max-width: 100%; }
     .qr[hidden] { display: none; }
+    .share-route { margin: 0 0 4px; font-size: 16px; }
+    .share-empty { color: #aaa; }
     .qr svg { display: block; width: 100%; height: auto; }
     .route-info li.current { color: #7dff7d; font-weight: bold; }
   </style>
@@ -104,9 +116,7 @@
   <div id="floor-tabs" class="floor-tabs" role="tablist" aria-label="Этажи"></div>
 
   <div id="search-panel" class="search-panel">
-    <input id="search" type="search" inputmode="search" enterkeyhint="go" autocomplete="off"
-           placeholder="Откуда? Номер или название" aria-label="Поиск аудитории или места">
-    <ul id="suggestions" class="suggestions" hidden></ul>
+    <button id="search-open" class="search-trigger" type="button" aria-label="Открыть поиск аудитории или места">Откуда? Номер или название</button>
     <!-- Ближайшее место от выбранного старта -->
     <div id="quick" class="quick" aria-label="Ближайшее место">
       <button type="button" data-poi="wc-man">Туалет (М)</button>
@@ -119,15 +129,33 @@
   <div id="map-wrap">
     <!-- Жесты ловим на map-container; внутри — «сцена», которую двигаем, масштабируем и поворачиваем -->
     <div id="map-container"><div id="map-stage"></div></div>
-    <!-- Пока открыт поиск, закрывает карту: касания по ней не проходят (нет случайных выборов) -->
-    <div id="map-shield" hidden></div>
     <div class="map-tools">
       <button type="button" id="btn-view" aria-label="Вернуть исходный вид карты">⌖ Вид</button>
+      <button type="button" id="btn-share" aria-label="Поделиться маршрутом" hidden>↗ Поделиться</button>
       <button type="button" id="btn-clear" aria-label="Сбросить маршрут" hidden>✕ Сбросить маршрут</button>
     </div>
   </div>
 
   <div id="route-info" class="route-info hidden"></div>
+
+  <!-- Экран 2: поиск (избранное и недавние — на нём же). Открывается поверх карты, «Назад» возвращает к ней -->
+  <section id="screen-search" class="screen" hidden aria-label="Поиск">
+    <div class="screen-head">
+      <button type="button" class="back" data-back aria-label="Назад к карте">←</button>
+      <input id="search" type="search" inputmode="search" enterkeyhint="go" autocomplete="off"
+             placeholder="Откуда? Номер или название" aria-label="Поиск аудитории или места">
+    </div>
+    <div class="screen-body"><ul id="suggestions" class="suggestions"></ul></div>
+  </section>
+
+  <!-- Экран 3: поделиться маршрутом (ссылка, QR-код) -->
+  <section id="screen-share" class="screen" hidden aria-label="Поделиться маршрутом">
+    <div class="screen-head">
+      <button type="button" class="back" data-back aria-label="Назад к карте">←</button>
+      <h1>Поделиться маршрутом</h1>
+    </div>
+    <div id="share-body" class="screen-body padded"></div>
+  </section>
 
   <script type="module" src="src/app.js"></script>
 </body>

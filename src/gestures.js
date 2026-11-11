@@ -1,6 +1,6 @@
 // Жесты на карте: перемещение, щипок (масштаб + поворот), двойное нажатие, колесо мыши.
 // Вся математика — в viewmath.js; здесь только события указателя (Pointer Events: мышь и касания одним кодом).
-import { IDENTITY, LIMITS, zoomAbout, rotateAbout, pinch, pan, clampView } from './viewmath.js';
+import { IDENTITY, LIMITS, zoomAbout, rotateAbout, pinch, pan, clampView, rescaleView } from './viewmath.js';
 
 const DRAG_THRESHOLD = 6;      // px: меньше — это нажатие, а не перетаскивание
 const DOUBLE_TAP_MS = 280;
@@ -22,6 +22,7 @@ export function attachGestures(container, { onChange, onTap, contentSize }) {
 
     function setView(next, { immediate = false } = {}) {
         const { W, H } = size();
+        if (!W || !H) { view = next; return; }      // карта скрыта (открыт другой экран): размеров нет, ничего не пересчитываем
         const c = contentSize?.() ?? { w: W, h: H };
         view = clampView(next, W, H, { cw: c.w, ch: c.h });
         if (immediate) { cancelAnimationFrame(frame); frame = null; onChange(view); return; }
@@ -122,13 +123,26 @@ export function attachGestures(container, { onChange, onTap, contentSize }) {
         else setView(zoomAbout(view, p, Math.exp(-e.deltaY * 0.0015)));
     }, { passive: false });
 
-    new ResizeObserver(() => setView(view, { immediate: true })).observe(container);
+    // Размер контейнера меняется при повороте телефона. Тогда сдвиг пересчитываем под новый размер, чтобы на экране
+    // осталось то же место карты. Нулевой размер — карту скрыли (другой экран): его пропускаем, вид не теряем.
+    let lastSize = null;
+    new ResizeObserver(() => {
+        const now = size();
+        if (!now.W || !now.H) return;
+        if (lastSize && (lastSize.W !== now.W || lastSize.H !== now.H)) view = rescaleView(view, lastSize, now);
+        lastSize = now;
+        setView(view, { immediate: true });
+    }).observe(container);
 
     return {
         get view() { return view; },
         reset() { animateTo({ s: 1, r: 0, tx: 0, ty: 0 }); },
         zoomBy(factor) { const { W, H } = size(); setView(zoomAbout(view, { x: W / 2, y: H / 2 }, factor)); },
         refresh() { setView(view, { immediate: true }); },
+        setView(next) { setView(next, { immediate: true }); },   // восстановление вида после перезагрузки
+        // Вернуть сохранённый вид; from — размер контейнера на момент сохранения (экран мог повернуться)
+        restore(v, from) { setView(rescaleView(v, from, size()), { immediate: true }); },
+        get size() { return size(); },
     };
 }
 

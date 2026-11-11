@@ -74,3 +74,10 @@ export function labelScale(zoom, fit, { glyph = 15, minPx = 12, maxPx = 22, maxG
     if (px > maxPx) return Math.max(maxPx / px, 0.4);
     return 1;
 }
+
+// Поворот телефона меняет размер контейнера. Чтобы на карте осталось то же место, сдвиг пересчитываем
+// пропорционально новому размеру (масштаб и поворот — относительные, их не трогаем).
+export function rescaleView(v, from, to) {
+    if (!from?.W || !from?.H || !to?.W || !to?.H) return v;
+    return { ...v, tx: v.tx * to.W / from.W, ty: v.ty * to.H / from.H };
+}

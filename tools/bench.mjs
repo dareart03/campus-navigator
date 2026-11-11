@@ -1,7 +1,7 @@
 // Замер поиска пути на синтетическом здании. Запуск:  node tools/bench.mjs [число_аудиторий ...]
 // Сравнивает прежний Дейкстру (поиск минимума перебором, O(V²)) и текущий (бинарная куча) и проверяет, что ответы совпадают.
 import { createGraphIndex, findShortestPath, validateGraph } from '../src/graph.js';
-import { makeBuilding } from '../bench/synthetic.mjs';
+import { makeBuilding } from '../bench/synthetic.js';
 
 // Прежняя версия, оставлена только как точка сравнения
 function naive(index, startId, endId) {

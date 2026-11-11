@@ -96,3 +96,14 @@ test('подписи: мелкие увеличиваются, но не бол�
     assert.equal(labelScale(1, 1), 1);      // 15px: уже читаются
     assert.ok(labelScale(8, 5) >= 0.4);     // нижняя граница
 });
+
+test('rescaleView: после поворота экрана остаётся то же место карты', async () => {
+    const { rescaleView, toScreen, toMap } = await import('../src/viewmath.js');
+    const v = { s: 2, r: 0, tx: -100, ty: -60 };
+    const from = { W: 400, H: 300 }, to = { W: 300, H: 400 };
+    const w = rescaleView(v, from, to);
+    assert.equal(w.s, 2);                                    // масштаб не трогаем
+    assert.equal(w.tx, -75);                                 // сдвиг пропорционально новому размеру
+    assert.equal(w.ty, -80);
+    assert.deepEqual(rescaleView(v, { W: 0, H: 0 }, to), v); // нулевой размер (карта скрыта) — без изменений
+});

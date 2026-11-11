@@ -1,9 +1,11 @@
 import { assertValidGraph, createGraphIndex, findShortestPath, findNearest, GraphError } from './graph.js';
 import { buildShareUrl, parseShareParams } from './share.js';
-import qrcode from './vendor/qrcode.mjs';
+import qrcode from './vendor/qrcode.js';
 import { attachGestures } from './gestures.js';
 import { labelScale } from './viewmath.js';
 import { invertMatrix, visibleRect, updateVisibility } from './culling.js';
+import { hashFor, screenFromHash, backAction } from './nav.js';
+import { saveSession, loadSession } from './session.js';
 import {
     buildSearchIndex, searchPlaces, toggleFavorite, pushRecent, sanitizeFavorites, sanitizeRecents,
     loadJSON, saveJSON, FAVORITES_KEY, RECENTS_KEY,
@@ -246,9 +248,12 @@ function resetRoute() {
 
 function updateTools() {
     document.getElementById('btn-clear').hidden = !currentStart;
+    document.getElementById('btn-share').hidden = !currentEnd;     // «поделиться» есть, только когда есть готовый маршрут
     // Подсказка в поле поиска зависит от того, что выбрано
-    document.getElementById('search').placeholder =
-        (!currentStart || currentEnd) ? 'Откуда? Номер или название' : 'Куда? Номер или название';
+    const hint = (!currentStart || currentEnd) ? 'Откуда? Номер или название' : 'Куда? Номер или название';
+    document.getElementById('search').placeholder = hint;
+    document.getElementById('search-open').textContent = hint;
+    scheduleSave();
 }
 
 // Обычное нажатие на карту (приходит из gestures.js, уже отличённое от жестов и двойного нажатия)
@@ -351,7 +356,7 @@ function renderRouteInfo(steps, startId, endId) {
         li.addEventListener('click', () => showFloor(s.floor));
         ol.append(li);
     });
-    info.append(ol, shareBlock(startId, endId));
+    info.append(ol);
 }
 
 function drawRouteBetween(startId, endId) {
@@ -402,19 +407,57 @@ function rememberRoute(from, to) {
     saveJSON(RECENTS_KEY, recents);
 }
 
-// Пока человек печатает, карта закрыта «щитом»: случайные касания не выберут аудиторию и не сдвинут карту
-function setTyping(on) {
-    document.getElementById('map-wrap').classList.toggle('typing', on);
-    document.getElementById('map-shield').hidden = !on;
-    document.getElementById('suggestions').hidden = !on;
+// --- ЭКРАНЫ И НАВИГАЦИЯ (C4) ---
+// Три экрана: карта (она всегда под остальными), поиск и «поделиться». Поиск и «поделиться» открываются поверх карты
+// и кладут запись в историю браузера, поэтому «Назад» (кнопка ←, кнопка браузера, жест на телефоне) возвращает на карту.
+// Пока открыт поиск, карта закрыта целиком — случайные касания по ней невозможны.
+let screen = 'map';
+const canShare = () => !!currentEnd;
+
+function renderScreen(name) {
+    screen = name;
+    const input = document.getElementById('search');
+    document.getElementById('screen-search').hidden = name !== 'search';
+    document.getElementById('screen-share').hidden = name !== 'share';
+    if (name === 'search') {
+        renderSuggestions();
+        input.focus();
+    } else {
+        input.value = '';
+        input.blur();
+    }
+    if (name === 'share') renderShareScreen();
+    scheduleSave();
 }
 
-function closeSearch() {
-    const input = document.getElementById('search');
-    input.value = '';
-    input.blur();
-    setTyping(false);
+function openScreen(name) {
+    if (name === screen) return;
+    const depth = (history.state?.depth ?? 0) + 1;
+    try {
+        history.pushState({ screen: name, depth }, '', location.pathname + location.search + hashFor(name));
+    } catch { /* без истории экран всё равно откроется, но «Назад» браузера не сработает */ }
+    renderScreen(name);
 }
+
+// Назад: есть наша запись в истории — идём по ней (дальше сработает popstate); нет — подменяем адрес на карту.
+// Возвращает Promise, который выполняется, когда переход закончился: адрес меняет только после этого,
+// иначе replaceState (ссылка маршрута) попал бы в запись, которую мы как раз закрываем, и ссылка потерялась бы.
+function goBack() {
+    if (backAction(history.state?.depth) === 'history-back') {
+        return new Promise(resolve => {
+            window.addEventListener('popstate', () => setTimeout(resolve), { once: true });
+            setTimeout(resolve, 500);                       // запасной выход, если popstate не пришёл
+            history.back();
+        });
+    }
+    try {
+        history.replaceState({ screen: 'map', depth: 0 }, '', location.pathname + location.search);
+    } catch { /* адрес не меняем */ }
+    renderScreen('map');
+    return Promise.resolve();
+}
+
+const closeSearch = goBack;
 
 function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -476,17 +519,13 @@ function onSuggestionClick(event) {
     }
     const place = event.target.closest('[data-place]');
     if (place) {
-        closeSearch();
-        selectNode(place.dataset.place);
+        closeSearch().then(() => selectNode(place.dataset.place));
         return;
     }
     const recent = event.target.closest('[data-recent]');
     if (recent) {                                 // недавний маршрут: строим сразу
         const { from, to } = recents[Number(recent.dataset.recent)];
-        closeSearch();
-        resetRoute();
-        selectNode(from);
-        selectNode(to);
+        closeSearch().then(() => { resetRoute(); selectNode(from); selectNode(to); });
     }
 }
 
@@ -499,22 +538,22 @@ function setupSearch() {
     favorites = sanitizeFavorites(loadJSON(FAVORITES_KEY, []), valid);
     recents = sanitizeRecents(loadJSON(RECENTS_KEY, []), valid);
 
-    input.addEventListener('focus', () => { setTyping(true); renderSuggestions(); });
     input.addEventListener('input', renderSuggestions);
     input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
             const first = list.querySelector('[data-place]');
-            if (first) { closeSearch(); selectNode(first.dataset.place); }
-        } else if (e.key === 'Escape') {
-            e.stopPropagation();                  // Esc закрывает поиск, а не сбрасывает маршрут
-            closeSearch();
+            if (first) closeSearch().then(() => selectNode(first.dataset.place));
         }
     });
     // Не даём списку отобрать фокус у поля до того, как сработает нажатие на строку
     list.addEventListener('mousedown', e => e.preventDefault());
     list.addEventListener('click', onSuggestionClick);
-    // Нажатие на затемнённую карту закрывает поиск (и клавиатуру)
-    document.getElementById('map-shield').addEventListener('pointerdown', e => { e.preventDefault(); closeSearch(); });
+
+    document.getElementById('search-open').addEventListener('click', () => openScreen('search'));
+    document.getElementById('btn-share').addEventListener('click', () => openScreen('share'));
+    document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', goBack));
+    // Кнопка «Назад» браузера или жест на телефоне: экран берём из адреса
+    window.addEventListener('popstate', () => renderScreen(screenFromHash(location.hash, { canShare: canShare() })));
 }
 
 // --- 7. БЛИЖАЙШЕЕ МЕСТО (F3) ---
@@ -561,7 +600,7 @@ const baseUrl = () => location.origin + location.pathname;
 // Держим адресную строку в актуальном состоянии: открытый маршрут — это ссылка, которой можно поделиться
 function syncUrl(from, to) {
     try {
-        history.replaceState(null, '', from && to ? buildShareUrl(baseUrl(), from, to) : baseUrl());
+        history.replaceState(history.state, '', (from && to ? buildShareUrl(baseUrl(), from, to) : baseUrl()) + location.hash);
     } catch { /* адрес не меняем, если браузер не разрешает */ }
 }
 
@@ -614,6 +653,17 @@ function shareBlock(startId, endId) {
     return box;
 }
 
+// Экран «поделиться»: что за маршрут и блок со ссылкой и QR-кодом
+function renderShareScreen() {
+    const body = document.getElementById('share-body');
+    body.replaceChildren();
+    if (!currentStart || !currentEnd) {
+        body.append(el('p', 'share-empty', 'Сначала постройте маршрут: выберите, откуда и куда идти.'));
+        return;
+    }
+    body.append(el('p', 'share-route', `${shortLabel(currentStart)} → ${shortLabel(currentEnd)}`), shareBlock(currentStart, currentEnd));
+}
+
 // Если страницу открыли по ссылке с маршрутом — строим его сразу
 function openSharedRoute() {
     const isPlace = id => {
@@ -629,6 +679,47 @@ function openSharedRoute() {
     }
     selectNode(shared.from);
     selectNode(shared.to);
+}
+
+// --- СОХРАНЕНИЕ СОСТОЯНИЯ (C7) ---
+// Этаж, вид карты, старт/финиш и запрос в поиске пишем в sessionStorage — при перезагрузке страницы
+// (в том числе когда телефон выгрузил вкладку в фоне) всё возвращается. Поворот экрана страницу не перезагружает:
+// вид карты просто подгоняется под новый размер (ResizeObserver в gestures.js).
+let saveTimer = null;
+let restoring = true;          // пока запускаемся, не затираем сохранённое
+const storage = (() => { try { return window.sessionStorage; } catch { return null; } })();
+
+function saveNow() {
+    if (!storage || restoring || !gestures) return;
+    saveSession(storage, {
+        floor: currentFloor, view: { ...gestures.view },
+        start: currentStart, end: currentEnd, query: document.getElementById('search').value,
+    });
+}
+
+function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNow, 250);
+}
+
+function setupSessionSaving() {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
+    window.addEventListener('pagehide', saveNow);
+    document.getElementById('search').addEventListener('input', scheduleSave);
+}
+
+// Возвращаем сохранённое. Маршрут из адреса (?from=…&to=…) главнее сохранённого.
+function restoreSession(hasSharedRoute) {
+    const saved = storage && loadSession(storage, {
+        floors: FLOORS,
+        isPlace: id => ['room', 'wc', 'exit'].includes(currentIndex.nodes.get(id)?.type),
+    });
+    if (!saved) return null;
+    if (!hasSharedRoute && saved.start) {
+        selectNode(saved.start);
+        if (saved.end) selectNode(saved.end);
+    }
+    return saved;
 }
 
 // --- 9. СТАРТ ---
@@ -648,13 +739,24 @@ window.onload = async () => {
         gestures = attachGestures(document.getElementById('map-container'), { onChange: applyView, onTap: handleTap, contentSize });
         document.getElementById('btn-view').addEventListener('click', () => gestures.reset());
         document.getElementById('btn-clear').addEventListener('click', resetRoute);
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') resetRoute(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (screen === 'map') resetRoute(); else goBack(); } });
         setupSearch();
         setupQuickButtons();
+        setupSessionSaving();
         updateTools();
         openSharedRoute();
+        const saved = restoreSession(!!currentStart);
 
-        showFloor(START_FLOOR);
+        showFloor(saved?.floor ?? (currentStart ? currentFloor : START_FLOOR));
+        if (saved?.view) gestures.setView(saved.view);
+
+        // Экран берём из адреса: после перезагрузки на #/search или #/share возвращаемся туда же
+        const startScreen = screenFromHash(location.hash, { canShare: canShare() });
+        try { history.replaceState({ screen: startScreen, depth: 0 }, '', location.pathname + location.search + hashFor(startScreen)); } catch { /* адрес не трогаем */ }
+        if (startScreen === 'search' && saved?.query) document.getElementById('search').value = saved.query;
+        renderScreen(startScreen);
+        restoring = false;
+        saveNow();
         if (warnings.length) showStatus('warning', 'Данные карты загружены с замечаниями', warnings);
     } catch (err) {
         if (err instanceof GraphError) {
