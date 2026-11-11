@@ -3,53 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <title>Навигатор по корпусу</title>
   <style>
-    body { margin: 0; font-family: sans-serif; background: #222; color: #fff; }
+    /* Цвета — переменные: светлая тема по умолчанию, тёмная включается системной настройкой (prefers-color-scheme) */
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f5f7;  --panel: #e4e7ec;  --control: #ffffff;  --border: #aab0bb;
+      --text: #1b1f27;  --muted: #596170;
+      --accent: #1a6fdb;  --accent-bg: #d3e4fc;  --fav: #a86f00;
+      --route: #00a32a;  --route-edge: #003300;  --start: #00a32a;  --end: #d32f2f;  --current: #0b7a2b;
+      --err-bg: #fde0e0;  --err-fg: #6b1414;  --info-bg: #dcebfb;  --info-fg: #12365c;  --warn-bg: #fff0c2;  --warn-fg: #5c4400;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #222;  --panel: #2c2c2c;  --control: #3a3a3a;  --border: #555;
+        --text: #fff;  --muted: #aaa;
+        --accent: #4da3ff;  --accent-bg: #26456b;  --fav: #ffcc33;
+        --route: #00ff00;  --route-edge: #003300;  --start: #00ff00;  --end: #ff0000;  --current: #7dff7d;
+        --err-bg: #5a1d1d;  --err-fg: #ffd6d6;  --info-bg: #1d3a5a;  --info-fg: #d6e8ff;  --warn-bg: #5a4a1d;  --warn-fg: #fff1c9;
+      }
+    }
+
+    /* Размеры шрифтов — в rem: при системном размере шрифта 1,3× интерфейс растёт вместе с ним */
+    body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); }
+    button { font-family: inherit; }
 
     /* Переключатель этажей */
-    .floor-tabs { display: flex; gap: 8px; padding: 8px 10px; justify-content: center; background: #2c2c2c; }
-    .floor-tabs button { min-width: 64px; padding: 10px 16px; font-size: 16px; cursor: pointer;
-        background: #3a3a3a; color: #fff; border: 2px solid transparent; border-radius: 8px; position: relative; }
-    .floor-tabs button.active { border-color: #4da3ff; background: #26456b; }
+    .floor-tabs { display: flex; gap: 8px; padding: 8px 10px; justify-content: center; background: var(--panel); }
+    .floor-tabs button { flex: 1 1 0; min-width: 0; max-width: 9rem; padding: 10px 8px; font-size: 1rem; cursor: pointer;
+        background: var(--control); color: var(--text); border: 2px solid transparent; border-radius: 8px; position: relative; }
+    .floor-tabs button.active { border-color: var(--accent); background: var(--accent-bg); }
     /* Точка на кнопке этажа, где проходит маршрут */
     .floor-tabs button.has-route::after { content: ''; position: absolute; top: 4px; right: 4px;
-        width: 8px; height: 8px; border-radius: 50%; background: #00FF00; }
+        width: 8px; height: 8px; border-radius: 50%; background: var(--route); }
 
     /* Поиск */
-    .search-panel { padding: 8px 10px; background: #2c2c2c; }
+    .search-panel { padding: 8px 10px; background: var(--panel); }
     /* На карте «поле поиска» — кнопка: нажатие открывает отдельный экран поиска */
-    .search-trigger { display: block; width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 16px; text-align: left;
-        color: #aaa; background: #3a3a3a; border: 2px solid #555; border-radius: 8px; cursor: pointer; }
-    .search-trigger:active { border-color: #4da3ff; }
+    .search-trigger { display: block; width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 1rem; text-align: left;
+        color: var(--muted); background: var(--control); border: 2px solid var(--border); border-radius: 8px; cursor: pointer; }
+    .search-trigger:active { border-color: var(--accent); }
 
     /* Отдельные экраны (поиск, «поделиться») лежат поверх карты на весь экран; карта под ними не теряет вид */
-    .screen { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: #222; }
+    .screen { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: var(--bg); }
     .screen[hidden] { display: none; }
-    .screen-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #2c2c2c; }
-    .screen-head h1 { margin: 0; font-size: 18px; font-weight: 600; }
-    .screen-head input { flex: 1; min-width: 0; padding: 12px 14px; font-size: 16px; color: #fff;
-        background: #3a3a3a; border: 2px solid #555; border-radius: 8px; }
-    .screen-head input:focus { outline: none; border-color: #4da3ff; }
-    .back { flex: none; min-width: 44px; height: 44px; font-size: 22px; line-height: 1; cursor: pointer; color: #fff;
-        background: #3a3a3a; border: 1px solid #666; border-radius: 8px; }
+    .screen-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--panel); }
+    .screen-head h1 { margin: 0; font-size: 1.125rem; font-weight: 600; }
+    .screen-head input { flex: 1; min-width: 0; padding: 12px 14px; font-size: 1rem; color: var(--text);
+        background: var(--control); border: 2px solid var(--border); border-radius: 8px; }
+    .screen-head input:focus { outline: none; border-color: var(--accent); }
+    .back { flex: none; min-width: 2.75rem; min-height: 2.75rem; font-size: 1.375rem; line-height: 1; cursor: pointer; color: var(--text);
+        background: var(--control); border: 1px solid var(--border); border-radius: 8px; }
     .screen-body { flex: 1; overflow-y: auto; padding: 0 0 24px; }
     .screen-body.padded { padding: 12px 14px 24px; }
     .suggestions { margin: 0; padding: 0; list-style: none; }
-    .sug { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px;
-        padding: 4px 4px 4px 14px; cursor: pointer; border-bottom: 1px solid #3d3d3d; }
-    .sug:active { background: #26456b; }
+    .sug { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 3rem;
+        padding: 4px 4px 4px 14px; cursor: pointer; border-bottom: 1px solid var(--border); }
+    .sug:active { background: var(--accent-bg); }
     .sug-text { min-width: 0; }
-    .sug-main { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sug-sub { font-size: 12px; color: #aaa; }
-    .fav { flex: none; width: 44px; height: 44px; font-size: 22px; color: #ffcc33; background: none; border: 0; cursor: pointer; }
-    .sug-heading { padding: 8px 14px 4px; font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; }
-    .sug-empty { padding: 14px; color: #aaa; font-size: 14px; }
+    .sug-main { font-size: 0.9375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sug-sub { font-size: 0.75rem; color: var(--muted); }
+    .fav { flex: none; width: 2.75rem; height: 2.75rem; font-size: 1.375rem; color: var(--fav); background: none; border: 0; cursor: pointer; }
+    .sug-heading { padding: 8px 14px 4px; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .sug-empty { padding: 14px; color: var(--muted); font-size: 0.875rem; }
 
     .quick { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
-    .quick button { flex: none; padding: 8px 12px; font-size: 14px; cursor: pointer; color: #fff;
-        background: #3a3a3a; border: 1px solid #666; border-radius: 16px; }
-    .quick button:active { background: #26456b; }
+    .quick button { flex: none; padding: 8px 12px; font-size: 0.875rem; cursor: pointer; color: var(--text);
+        background: var(--control); border: 1px solid var(--border); border-radius: 16px; }
+    .quick button:active { background: var(--accent-bg); }
 
     #map-wrap { position: relative; }
     /* touch-action: none — жесты обрабатываем сами, браузер не должен их перехватывать (скролл, зум страницы) */
@@ -58,12 +84,20 @@
     #map-stage { width: 100%; height: 100%; transform-origin: 0 0; will-change: transform; }
     .floor-map { width: 100%; height: 100%; }
 
+    /* Загрузка карты: пока файлы не пришли, в области карты крутится индикатор */
+    .loading { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 12px; color: var(--muted); font-size: 0.9375rem; background: var(--bg); }
+    .loading[hidden] { display: none; }
+    .spinner { width: 2rem; height: 2rem; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%;
+        animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+
     /* кнопки под картой, чтобы не закрывать комнаты */
-    .map-tools { display: flex; flex-direction: row; justify-content: flex-end; gap: 8px; padding: 6px 10px; }
-    .map-tools button { padding: 8px 12px; font-size: 14px; cursor: pointer; color: #fff; border: 1px solid #666;
-        border-radius: 8px; background: rgba(40, 40, 40, 0.85); }
+    .map-tools { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 6px 10px; }
+    .map-tools button { padding: 8px 12px; font-size: 0.875rem; cursor: pointer; color: var(--text); border: 1px solid var(--border);
+        border-radius: 8px; background: var(--control); }
     .map-tools button[hidden] { display: none; }
-    .map-tools { flex-wrap: wrap; }
 
     /* Подписи: размер и поворот задаёт app.js через --ls и --rot, чтобы они читались при любом масштабе */
     .floor-map #Texts path { transform-box: fill-box; transform-origin: center;
@@ -72,45 +106,52 @@
     .floor-map svg { width: 100%; height: 100%; display: block; }
 
     /* --inv = 1 / масштаб на экране: толщина линий на экране не зависит от увеличения */
-    .route-line { stroke: #00FF00; stroke-width: calc(4px * var(--inv, 1)); fill: none; stroke-linecap: round; stroke-linejoin: round; }
-    .route-stairs { fill: #00FF00; stroke: #003300; stroke-width: calc(2px * var(--inv, 1)); r: calc(7px * var(--inv, 1)); }
+    .route-line { stroke: var(--route); stroke-width: calc(4px * var(--inv, 1)); fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .route-stairs { fill: var(--route); stroke: var(--route-edge); stroke-width: calc(2px * var(--inv, 1)); r: calc(7px * var(--inv, 1)); }
 
     /* Комната, выбранная как старт / финиш */
-    .start-room { stroke: #00FF00; stroke-width: calc(4px * var(--inv, 1)); }
-    .end-room   { stroke: #FF0000; stroke-width: calc(4px * var(--inv, 1)); }
+    .start-room { stroke: var(--start); stroke-width: calc(4px * var(--inv, 1)); }
+    .end-room   { stroke: var(--end); stroke-width: calc(4px * var(--inv, 1)); }
     .floor-map [id^="room-"], .floor-map [id^="man-WC"], .floor-map [id^="woman-WC"], .floor-map [id^="special-WC"] { cursor: pointer; }
     /* Подписи лежат поверх комнат и перехватывали бы клики */
     .floor-map #Texts { pointer-events: none; }
 
-    .status { margin: 0; padding: 10px 14px; font-size: 14px; }
+    .status { margin: 0; padding: 10px 14px; font-size: 0.875rem; }
     .status.hidden { display: none; }
     .status ul { margin: 6px 0 0; padding-left: 20px; }
-    .status.error { background: #5a1d1d; color: #ffd6d6; }
-    .status.info { background: #1d3a5a; color: #d6e8ff; }
-    .status.warning { background: #5a4a1d; color: #fff1c9; }
+    .status.error { background: var(--err-bg); color: var(--err-fg); }
+    .status.info { background: var(--info-bg); color: var(--info-fg); }
+    .status.warning { background: var(--warn-bg); color: var(--warn-fg); }
+    .status button { margin-top: 10px; padding: 8px 14px; font-size: 0.875rem; cursor: pointer; color: inherit;
+        background: transparent; border: 1px solid currentColor; border-radius: 8px; }
+    /* Нет сети: тонкая полоса сверху, пока связи нет */
+    .net { margin: 0; padding: 6px 14px; font-size: 0.8125rem; text-align: center; color: var(--warn-fg); background: var(--warn-bg); }
+    .net[hidden] { display: none; }
 
     /* Пошаговое описание маршрута */
     .route-info { padding: 8px 14px 16px; }
     .route-info.hidden { display: none; }
+    .route-info.empty { color: var(--muted); font-size: 0.9375rem; }
     .route-info ol { margin: 6px 0 0; padding-left: 22px; }
     .route-info li { padding: 6px 0; cursor: pointer; }
     /* Ссылка и QR-код маршрута */
     .share { margin-top: 8px; }
     .share-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-    .share-buttons button { padding: 8px 12px; font-size: 14px; cursor: pointer; color: #fff;
-        background: #3a3a3a; border: 1px solid #666; border-radius: 8px; }
-    .share-url { width: 100%; box-sizing: border-box; margin-top: 8px; padding: 8px; font-size: 13px; color: #ccc;
-        background: #2c2c2c; border: 1px solid #555; border-radius: 6px; }
+    .share-buttons button { padding: 8px 12px; font-size: 0.875rem; cursor: pointer; color: var(--text);
+        background: var(--control); border: 1px solid var(--border); border-radius: 8px; }
+    .share-url { width: 100%; box-sizing: border-box; margin-top: 8px; padding: 8px; font-size: 0.8125rem; color: var(--muted);
+        background: var(--panel); border: 1px solid var(--border); border-radius: 6px; }
     .qr { margin-top: 10px; padding: 10px; background: #fff; border-radius: 8px; width: 220px; max-width: 100%; }
     .qr[hidden] { display: none; }
-    .share-route { margin: 0 0 4px; font-size: 16px; }
-    .share-empty { color: #aaa; }
+    .share-route { margin: 0 0 4px; font-size: 1rem; }
+    .share-empty { color: var(--muted); }
     .qr svg { display: block; width: 100%; height: auto; }
-    .route-info li.current { color: #7dff7d; font-weight: bold; }
+    .route-info li.current { color: var(--current); font-weight: bold; }
   </style>
 </head>
 <body>
 
+  <div id="net" class="net" role="status" hidden>Нет сети. Приложение работает с уже загруженными данными.</div>
   <div id="status" class="status hidden" role="alert"></div>
 
   <div id="floor-tabs" class="floor-tabs" role="tablist" aria-label="Этажи"></div>
@@ -128,7 +169,10 @@
 
   <div id="map-wrap">
     <!-- Жесты ловим на map-container; внутри — «сцена», которую двигаем, масштабируем и поворачиваем -->
-    <div id="map-container"><div id="map-stage"></div></div>
+    <div id="map-container">
+      <div id="map-stage"></div>
+      <div id="loading" class="loading" role="status"><div class="spinner" aria-hidden="true"></div><div>Загрузка карты…</div></div>
+    </div>
     <div class="map-tools">
       <button type="button" id="btn-view" aria-label="Вернуть исходный вид карты">⌖ Вид</button>
       <button type="button" id="btn-share" aria-label="Поделиться маршрутом" hidden>↗ Поделиться</button>

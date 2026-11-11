@@ -24,14 +24,35 @@ const LABEL_SIZE_DESKTOP = { minPx: 12, maxPx: 22 };
 const LABEL_SIZE_PHONE = { minPx: 6.5, maxPx: 11 };
 const isPhone = () => matchMedia('(pointer: coarse)').matches || window.innerWidth < 700;
 
+// --- ЗАГРУЗКА ФАЙЛОВ: сеть может пропасть (авиарежим) ---
+// Любая неудача загрузки — понятное сообщение с кнопкой «Повторить», а не пустой экран.
+function loadError(message, problems = []) {
+    const err = new GraphError(message, problems);
+    err.retryable = true;
+    return err;
+}
+
+async function fetchFile(url, what) {
+    let response;
+    try {
+        response = await fetch(url, { cache: 'no-cache' });
+    } catch {                                           // fetch отклоняется, когда связи нет совсем
+        throw loadError(navigator.onLine === false ? 'Нет сети: не удалось загрузить план здания' : 'Нет связи с сервером: не удалось загрузить план здания',
+            [`Не загрузился файл: ${what}`, 'Проверьте интернет (возможно, включён авиарежим) и нажмите «Повторить».']);
+    }
+    if (!response.ok) throw loadError(`Не удалось загрузить ${what}: ${response.status}`, ['Нажмите «Повторить» или обновите страницу.']);
+    return response;
+}
+
 // --- 1. ЗАГРУЗКА КАРТ (по одному SVG на этаж) ---
 async function loadMaps() {
     const stage = document.getElementById('map-stage');
     const tabs = document.getElementById('floor-tabs');
+    stage.replaceChildren();          // повторная попытка после ошибки начинает с чистого места
+    tabs.replaceChildren();
 
     for (const floor of FLOORS) {
-        const response = await fetch(`maps/map${floor}.svg`, { cache: 'no-cache' });
-        if (!response.ok) throw new GraphError(`Не удалось загрузить карту этажа ${floor} (maps/map${floor}.svg): ${response.status}`);
+        const response = await fetchFile(`maps/map${floor}.svg`, `карта этажа ${floor} (maps/map${floor}.svg)`);
 
         const holder = document.createElement('div');
         holder.className = 'floor-map';
@@ -61,8 +82,7 @@ async function loadMaps() {
 
 // --- 2. ЗАГРУЗКА ГРАФА (JSON) ---
 async function loadGraph() {
-    const response = await fetch('data/data.json', { cache: 'no-cache' });
-    if (!response.ok) throw new GraphError(`Не удалось загрузить данные здания (data/data.json): ${response.status}`);
+    const response = await fetchFile('data/data.json', 'данные здания (data/data.json)');
     try {
         return await response.json();
     } catch {
@@ -71,7 +91,7 @@ async function loadGraph() {
 }
 
 // --- СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЮ ---
-function showStatus(kind, title, lines = []) {
+function showStatus(kind, title, lines = [], { onRetry } = {}) {
     const box = document.getElementById('status');
     box.className = `status ${kind}`;
     box.replaceChildren();
@@ -82,6 +102,13 @@ function showStatus(kind, title, lines = []) {
         const ul = document.createElement('ul');
         lines.forEach(l => ul.append(Object.assign(document.createElement('li'), { textContent: l })));
         box.append(ul);
+    }
+    if (onRetry) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = 'Повторить';
+        b.addEventListener('click', onRetry);
+        box.append(b);
     }
 }
 
@@ -119,11 +146,16 @@ function contentSize() {
     return vb && vb.width ? { w: vb.width * k, h: vb.height * k } : { w: container.clientWidth, h: container.clientHeight };
 }
 
+// Во сколько раз системный размер шрифта больше обычного (16 px): 1 по умолчанию, 1,3 при крупном шрифте
+const fontScale = () => parseFloat(getComputedStyle(document.documentElement).fontSize) / 16 || 1;
+
 function applyView(v) {
     const stage = document.getElementById('map-stage');
     const k = fitScale();
     stage.style.transform = `translate(${v.tx}px, ${v.ty}px) rotate(${v.r}rad) scale(${v.s})`;
-    stage.style.setProperty('--ls', labelScale(v.s, k, isPhone() ? LABEL_SIZE_PHONE : LABEL_SIZE_DESKTOP).toFixed(3));
+    const base = isPhone() ? LABEL_SIZE_PHONE : LABEL_SIZE_DESKTOP;
+    const f = fontScale();     // системный размер шрифта 1,3× делает подписи на карте тоже крупнее
+    stage.style.setProperty('--ls', labelScale(v.s, k, { minPx: base.minPx * f, maxPx: base.maxPx * f }).toFixed(3));
     stage.style.setProperty('--rot', (v.r * 180 / Math.PI).toFixed(2));
     stage.style.setProperty('--inv', (1 / (k * v.s)).toFixed(4));
     cullOffscreen();
@@ -246,9 +278,20 @@ function resetRoute() {
     updateTools();
 }
 
+// Пустое состояние блока шагов: подсказка вместо пустого места
+function showRouteHint() {
+    const info = document.getElementById('route-info');
+    info.className = 'route-info empty';
+    info.replaceChildren(document.createTextNode(currentStart
+        ? `Старт: ${shortLabelSafe(currentStart)}. Теперь выберите, куда идти: нажмите на аудиторию или найдите её в поиске.`
+        : 'Маршрут не выбран. Нажмите на аудиторию на карте или откройте поиск, затем выберите вторую точку. Туалеты, выходы и столовую можно найти кнопками выше.'));
+}
+const shortLabelSafe = id => { try { return shortLabel(id); } catch { return id; } };
+
 function updateTools() {
     document.getElementById('btn-clear').hidden = !currentStart;
     document.getElementById('btn-share').hidden = !currentEnd;     // «поделиться» есть, только когда есть готовый маршрут
+    if (!currentEnd) showRouteHint();
     // Подсказка в поле поиска зависит от того, что выбрано
     const hint = (!currentStart || currentEnd) ? 'Откуда? Номер или название' : 'Куда? Номер или название';
     document.getElementById('search').placeholder = hint;
@@ -506,7 +549,8 @@ function renderSuggestions() {
             list.append(li);
         });
     }
-    if (!favorites.length && !recents.length) list.append(el('li', 'sug-empty', 'Введите номер аудитории или название'));
+    if (!favorites.length) list.append(el('li', 'sug-heading', 'Избранное'), el('li', 'sug-empty', 'Пока пусто: нажмите ☆ рядом с местом в результатах поиска'));
+    if (!recents.length) list.append(el('li', 'sug-heading', 'Недавние маршруты'), el('li', 'sug-empty', 'Пока пусто: здесь появятся построенные маршруты'));
 }
 
 function onSuggestionClick(event) {
@@ -723,7 +767,12 @@ function restoreSession(hasSharedRoute) {
 }
 
 // --- 9. СТАРТ ---
-window.onload = async () => {
+// Состояния экрана карты: загрузка (индикатор), ошибка (сообщение и «Повторить»), готово.
+// Запуск можно повторить после ошибки: повторять нечего, пока не прошла загрузка файлов, поэтому слушатели вешаются только после неё.
+async function start() {
+    const loading = document.getElementById('loading');
+    loading.hidden = false;
+    clearStatus();
     try {
         await loadMaps();
         const graph = await loadGraph();
@@ -760,10 +809,35 @@ window.onload = async () => {
         if (warnings.length) showStatus('warning', 'Данные карты загружены с замечаниями', warnings);
     } catch (err) {
         if (err instanceof GraphError) {
-            showStatus('error', err.message, err.problems);
+            showStatus('error', err.message, err.problems, err.retryable ? { onRetry: start } : {});
         } else {
-            showStatus('error', 'Не удалось запустить приложение', [String(err.message ?? err)]);
+            showStatus('error', 'Не удалось запустить приложение', [String(err.message ?? err)], { onRetry: start });
             console.error(err);
         }
+    } finally {
+        loading.hidden = true;
     }
+}
+
+// Полоса «нет сети»: показываем, пока связи нет. Приложение при этом работает: план и граф уже загружены,
+// а при следующем запуске их отдаст service worker из кеша (sw.js).
+function setupNetworkBanner() {
+    const banner = document.getElementById('net');
+    const update = () => { banner.hidden = navigator.onLine !== false; };
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    update();
+}
+
+function registerServiceWorker() {
+    // Работает только по https и на localhost; в остальных случаях (http по IP в локальной сети) просто пропускаем
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+        navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service worker не зарегистрирован:', err));
+    }
+}
+
+window.onload = () => {
+    setupNetworkBanner();
+    registerServiceWorker();
+    start();
 };
