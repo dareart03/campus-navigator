@@ -2,7 +2,8 @@ import { assertValidGraph, createGraphIndex, findShortestPath, findNearest, Grap
 import { buildShareUrl, parseShareParams } from './share.js';
 import qrcode from './vendor/qrcode.js';
 import { attachGestures } from './gestures.js';
-import { labelScale } from './viewmath.js';
+import { labelScale, rotateAbout } from './viewmath.js';
+import { NORTH_KEY, approachHeading, angleDiff, headingFromEvent, mapRotation, wrapPi, sanitizeOffset } from './compass.js';
 import { invertMatrix, visibleRect, updateVisibility } from './culling.js';
 import { hashFor, screenFromHash, backAction } from './nav.js';
 import { saveSession, loadSession } from './session.js';
@@ -725,6 +726,153 @@ function openSharedRoute() {
     selectNode(shared.to);
 }
 
+// --- КОМПАС (S2) ---
+// Кнопка «Компас» включает датчик ориентации телефона: карта поворачивается так, чтобы «вверх» экрана было там, куда
+// смотрит человек. Математика — в compass.js. «Вверх» плана у каждого здания смотрит в свою сторону света, поэтому
+// есть калибровка: встать лицом туда, куда направлено «вверх» плана, и нажать «Задать «вверх»» — угол запоминается.
+// Позицию человека по датчикам определить нельзя (GPS в помещении не работает), поэтому поворачивается только карта.
+const compass = { on: false, heading: null, offset: 0, gotAbsolute: false, sawData: false, pendingPlain: null, fallbackTimer: null, target: null, frameAt: 0, startedAt: 0, lastEventAt: 0, manualUntil: 0, raf: null, watchdog: null };
+const MANUAL_PAUSE_MS = 3000;        // после прикосновения к карте (сдвиг, щипок) компас не мешает три секунды
+const NO_SENSOR_MS = 2000;           // столько ждём первое событие датчика, потом считаем, что датчика нет
+const RELATIVE_FALLBACK_MS = 1000;   // «абсолютных» событий нет — берём обычные (в эмуляции DevTools и на части устройств)
+
+function loadNorthOffset() {
+    try { compass.offset = sanitizeOffset(localStorage.getItem(NORTH_KEY)); } catch { compass.offset = 0; }
+}
+
+function setCompassButtons(on) {
+    const b = document.getElementById('btn-compass');
+    b.setAttribute('aria-pressed', String(on));
+    document.getElementById('btn-north').hidden = !on;
+}
+
+// Каждый кадр приближаем сглаженное направление к последнему показанию датчика и поворачиваем карту.
+// Цикл идёт, пока не дошли до цели (или пока карту держат пальцами), потом останавливается и ждёт новых событий.
+function applyCompass(now = performance.now()) {
+    compass.raf = null;
+    if (!compass.on || compass.target == null || !gestures) return;
+    const dt = compass.frameAt ? now - compass.frameAt : 0;
+    compass.frameAt = now;
+    compass.heading = approachHeading(compass.heading, compass.target, dt);
+
+    let settled = true;
+    if (now >= compass.manualUntil) {
+        const { W, H } = gestures.size;
+        const view = gestures.view;
+        const dr = wrapPi(mapRotation(compass.heading, compass.offset) - view.r);
+        if (Math.abs(dr) > 0.002) gestures.setView(rotateAbout(view, { x: W / 2, y: H / 2 }, dr));
+        settled = Math.abs(dr) < 0.004 && Math.abs(angleDiff(compass.target, compass.heading)) < 0.3;
+    } else {
+        settled = false;                                    // карту держат — подождём
+    }
+    if (settled) compass.frameAt = 0;
+    else compass.raf = requestAnimationFrame(applyCompass);
+}
+
+// absoluteEvent: событие deviceorientationabsolute (направление относительно севера).
+// Обычные события (deviceorientation) считаются запасным вариантом: берём их, если за секунду «абсолютных» не было.
+// Эмуляция датчика в DevTools присылает событие один раз при смене значений, поэтому последнее обычное запоминаем
+// и применяем, когда секунда ожидания закончилась, даже если новых событий уже не будет.
+function acceptHeading(h) {
+    compass.lastEventAt = performance.now();
+    compass.target = h;
+    if (compass.heading == null) compass.heading = h;         // первое показание — сразу, без разгона
+    if (compass.raf === null) compass.raf = requestAnimationFrame(applyCompass);
+}
+
+function onOrientation(e, absoluteEvent) {
+    if (!compass.on) return;
+    const h = headingFromEvent(e);
+    if (h == null) return;                  // Chrome без датчика присылает пустые события — они не считаются
+    compass.sawData = true;                 // датчик жив, даже если пока не берём его данные
+    if (absoluteEvent) compass.gotAbsolute = true;
+    const trusted = absoluteEvent || typeof e.webkitCompassHeading === 'number' || e.absolute === true;
+    if (trusted) {
+        acceptHeading(h);
+    } else if (!compass.gotAbsolute) {
+        compass.pendingPlain = h;
+        if (performance.now() - compass.startedAt > RELATIVE_FALLBACK_MS) acceptHeading(h);
+    }
+}
+
+const onAbsolute = e => onOrientation(e, true);
+const onPlain = e => onOrientation(e, false);
+
+function stopCompass() {
+    window.removeEventListener('deviceorientationabsolute', onAbsolute);
+    window.removeEventListener('deviceorientation', onPlain);
+    clearTimeout(compass.watchdog);
+    clearTimeout(compass.fallbackTimer);
+    cancelAnimationFrame(compass.raf);
+    Object.assign(compass, { on: false, heading: null, target: null, frameAt: 0, gotAbsolute: false, sawData: false, pendingPlain: null, raf: null, watchdog: null, fallbackTimer: null });
+    setCompassButtons(false);
+}
+
+async function startCompass() {
+    if (!window.isSecureContext || !('DeviceOrientationEvent' in window)) {
+        showStatus('warning', 'Компас здесь недоступен', ['Датчик ориентации работает на телефоне и только по https (например, на GitHub Pages).']);
+        return;
+    }
+    // iOS спрашивает разрешение; вызывать нужно прямо из нажатия на кнопку
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+            if (await DeviceOrientationEvent.requestPermission() !== 'granted') throw new Error('denied');
+        } catch {
+            showStatus('warning', 'Нет доступа к датчикам', ['Разрешите доступ к движению и ориентации в настройках браузера и включите компас снова.']);
+            return;
+        }
+    }
+    compass.on = true;
+    compass.startedAt = performance.now();
+    compass.lastEventAt = 0;
+    compass.sawData = false;
+    compass.pendingPlain = null;
+    setCompassButtons(true);
+    window.addEventListener('deviceorientationabsolute', onAbsolute);
+    window.addEventListener('deviceorientation', onPlain);
+    showStatus('info', 'Компас включён: карта поворачивается вслед за вами', [
+        'Если направление не совпало с планом: встаньте лицом туда, куда на карте направлено «вверх», и нажмите «Задать «вверх»». Это нужно один раз, значение запомнится.',
+        'Телефон лучше держать вертикально перед собой.',
+    ]);
+    // Если за секунду «абсолютных» событий не было, а обычное пришло — применяем его (новых может и не быть)
+    compass.fallbackTimer = setTimeout(() => {
+        if (compass.on && !compass.gotAbsolute && compass.pendingPlain != null) acceptHeading(compass.pendingPlain);
+    }, RELATIVE_FALLBACK_MS + 50);
+    compass.watchdog = setTimeout(() => {
+        if (compass.on && !compass.sawData) {
+            stopCompass();
+            showStatus('warning', 'Компас не отвечает', ['Датчик ориентации не присылает данные. На компьютере его обычно нет; попробуйте на телефоне.']);
+        }
+    }, NO_SENSOR_MS);
+}
+
+function toggleCompass() {
+    if (compass.on) {
+        stopCompass();
+        clearStatus();
+    } else {
+        startCompass();
+    }
+}
+
+function calibrateNorth() {
+    if (!compass.on || compass.heading == null) return;
+    compass.offset = compass.target ?? compass.heading;     // берём последнее показание датчика, а не сглаженное
+    compass.heading = compass.offset;
+    try { localStorage.setItem(NORTH_KEY, String(Math.round(compass.offset * 10) / 10)); } catch { /* без хранилища калибровка живёт до перезагрузки */ }
+    compass.manualUntil = 0;
+    applyCompass();                                          // карта сразу встаёт «вверх» плана
+    showStatus('info', `«Вверх» на плане задано: ${Math.round(compass.offset)}°`, ['Теперь карта совпадает с тем, что перед вами.']);
+}
+
+function setupCompass() {
+    loadNorthOffset();
+    document.getElementById('btn-compass').addEventListener('click', toggleCompass);
+    document.getElementById('btn-north').addEventListener('click', calibrateNorth);
+    // Пока человек двигает карту пальцами, компас её не крутит
+    document.getElementById('map-container').addEventListener('pointerdown', () => { compass.manualUntil = performance.now() + MANUAL_PAUSE_MS; });
+}
+
 // --- СОХРАНЕНИЕ СОСТОЯНИЯ (C7) ---
 // Этаж, вид карты, старт/финиш и запрос в поиске пишем в sessionStorage — при перезагрузке страницы
 // (в том числе когда телефон выгрузил вкладку в фоне) всё возвращается. Поворот экрана страницу не перезагружает:
@@ -786,11 +934,12 @@ async function start() {
         currentIndex = createGraphIndex(graph);
 
         gestures = attachGestures(document.getElementById('map-container'), { onChange: applyView, onTap: handleTap, contentSize });
-        document.getElementById('btn-view').addEventListener('click', () => gestures.reset());
+        document.getElementById('btn-view').addEventListener('click', () => { stopCompass(); gestures.reset(); });
         document.getElementById('btn-clear').addEventListener('click', resetRoute);
         document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (screen === 'map') resetRoute(); else goBack(); } });
         setupSearch();
         setupQuickButtons();
+        setupCompass();
         setupSessionSaving();
         updateTools();
         openSharedRoute();

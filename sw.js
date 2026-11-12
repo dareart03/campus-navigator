@@ -6,7 +6,7 @@ const CACHE = 'navigator-v1';
 const CORE = [
     './', 'index.html', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
     'data/data.json', 'maps/map1.svg', 'maps/map2.svg', 'maps/map3.svg',
-    'src/app.js', 'src/gestures.js', 'src/graph.js', 'src/heap.js', 'src/culling.js', 'src/nav.js', 'src/session.js',
+    'src/app.js', 'src/gestures.js', 'src/graph.js', 'src/heap.js', 'src/culling.js', 'src/nav.js', 'src/session.js', 'src/compass.js',
     'src/search.js', 'src/share.js', 'src/viewmath.js', 'src/vendor/qrcode.js',
 ];
 

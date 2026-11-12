@@ -98,6 +98,7 @@
     .map-tools button { padding: 8px 12px; font-size: 0.875rem; cursor: pointer; color: var(--text); border: 1px solid var(--border);
         border-radius: 8px; background: var(--control); }
     .map-tools button[hidden] { display: none; }
+    .map-tools button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-bg); }
 
     /* Подписи: размер и поворот задаёт app.js через --ls и --rot, чтобы они читались при любом масштабе */
     .floor-map #Texts path { transform-box: fill-box; transform-origin: center;
@@ -175,6 +176,8 @@
     </div>
     <div class="map-tools">
       <button type="button" id="btn-view" aria-label="Вернуть исходный вид карты">⌖ Вид</button>
+      <button type="button" id="btn-compass" aria-pressed="false" aria-label="Включить компас: карта поворачивается, как вы">🧭 Компас</button>
+      <button type="button" id="btn-north" aria-label="Задать, куда смотрит «вверх» на плане" hidden>⬆ Задать «вверх»</button>
       <button type="button" id="btn-share" aria-label="Поделиться маршрутом" hidden>↗ Поделиться</button>
       <button type="button" id="btn-clear" aria-label="Сбросить маршрут" hidden>✕ Сбросить маршрут</button>
     </div>
