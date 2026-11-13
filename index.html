@@ -115,8 +115,11 @@
     .route-stairs { fill: var(--route); stroke: var(--route-edge); stroke-width: calc(2px * var(--inv, 1)); r: calc(7px * var(--inv, 1)); }
 
     /* Комната, выбранная как старт / финиш */
-    .start-room { stroke: var(--start); stroke-width: calc(4px * var(--inv, 1)); }
-    .end-room   { stroke: var(--end); stroke-width: calc(4px * var(--inv, 1)); }
+    /* обводка выбранного места: отдельный слой поверх карты, только внешний край (см. markRoom в app.js) */
+    .room-outline { pointer-events: none; }
+    .room-outline [mask] > * { fill: none; stroke-width: calc(8px * var(--inv, 1)); stroke-linejoin: round; }   /* только кольцо, не маска */
+    .outline-start { stroke: var(--start); }
+    .outline-end   { stroke: var(--end); }
     .floor-map [id^="room-"], .floor-map [id^="man-WC"], .floor-map [id^="woman-WC"], .floor-map [id^="special-WC"] { cursor: pointer; }
     /* Подписи лежат поверх комнат и перехватывали бы клики */
     .floor-map #Texts { pointer-events: none; }

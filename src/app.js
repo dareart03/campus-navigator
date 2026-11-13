@@ -177,7 +177,7 @@ const cullEnabled = new URLSearchParams(location.search).get('cull') !== '0';
 const cullIndex = new Map();   // этаж -> { items: [{ el, slot, box, visible }], byId: Map }
 const statsEnabled = new URLSearchParams(location.search).has('stats');   // читаем один раз: ссылка маршрута потом перезапишет адрес
 const stats = { total: 0, visible: 0, ms: 0 };
-const isPinned = it => it.el.classList.contains('start-room') || it.el.classList.contains('end-room');
+const isPinned = it => it.el.classList.contains('pin-start') || it.el.classList.contains('pin-end');
 
 function buildCullIndex(floor) {
     const items = [], byId = new Map();
@@ -262,8 +262,10 @@ function showFloor(floor) {
 
 // --- 4. ОБРАБОТКА КЛИКОВ ПО КОМНАТАМ ---
 function clearSelection() {
-    cullIndex.forEach(({ items }) => items.forEach(it => it.el.classList.remove('start-room', 'end-room')));   // в т.ч. убранные из DOM
-    document.querySelectorAll('.start-room, .end-room').forEach(el => el.classList.remove('start-room', 'end-room'));
+    const marks = ['pin-start', 'pin-end'];
+    cullIndex.forEach(({ items }) => items.forEach(it => it.el.classList.remove(...marks)));   // в т.ч. убранные из DOM
+    document.querySelectorAll('.room-outline').forEach(el => el.remove());                    // обводки выбранных мест
+    document.querySelectorAll('.pin-start, .pin-end').forEach(el => el.classList.remove(...marks));
     document.querySelectorAll('.route-line, .route-stairs').forEach(el => el.remove());
     document.querySelectorAll('.floor-tabs button').forEach(b => b.classList.remove('has-route'));
     const info = document.getElementById('route-info');
@@ -310,6 +312,45 @@ function handleTap(target) {
     selectNode(graphId(floor, room.id));
 }
 
+// Подсветка выбранного места (kind: 'start' или 'end'): обводка только по внешнему краю.
+// Простое «stroke» на фигуре не годится: у места из нескольких фигур (столовая, спортзал) обвелась бы каждая фигура внутри,
+// а стены карты лежат выше комнат и закрывают половину обводки. Поэтому рисуем отдельный слой поверх карты:
+// копии фигур с толстой обводкой и маска, которая вырезает внутренность самих фигур. Остаётся только внешнее кольцо.
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const SHAPES = 'path, rect, polygon, ellipse, circle';
+
+function markRoom(el, kind) {
+    if (!el) return;
+    el.classList.add(`pin-${kind}`);                                  // метка для отсечения (выбранное не убираем из DOM) и сброса
+    const svg = el.ownerSVGElement;
+    const shapes = el.matches(SHAPES) ? [el] : [...el.querySelectorAll(SHAPES)];
+    if (!svg || !shapes.length) return;
+
+    const layer = document.createElementNS(SVG_NS, 'g');
+    layer.setAttribute('class', `room-outline outline-${kind}`);
+    layer.setAttribute('aria-hidden', 'true');
+    const maskId = `outline-mask-${kind}`;
+    const mask = document.createElementNS(SVG_NS, 'mask');
+    mask.setAttribute('id', maskId);
+    mask.setAttribute('maskUnits', 'userSpaceOnUse');
+    for (const [k, v] of Object.entries({ x: -5000, y: -5000, width: 10000, height: 10000 })) mask.setAttribute(k, v);
+    const everything = document.createElementNS(SVG_NS, 'rect');     // белое — видно, чёрное (фигуры места) — вырезано
+    for (const [k, v] of Object.entries({ x: -5000, y: -5000, width: 10000, height: 10000, fill: '#fff' })) everything.setAttribute(k, v);
+    mask.append(everything);
+    const ring = document.createElementNS(SVG_NS, 'g');
+    ring.setAttribute('mask', `url(#${maskId})`);
+    for (const shape of shapes) {
+        const hole = shape.cloneNode(false);
+        const line = shape.cloneNode(false);
+        for (const copy of [hole, line]) copy.removeAttribute('id');
+        hole.setAttribute('fill', '#000'); hole.setAttribute('stroke', 'none');
+        mask.append(hole);
+        ring.append(line);
+    }
+    layer.append(mask, ring);
+    svg.append(layer);
+}
+
 // Выбор места: и нажатием на карту, и из поиска. Первый выбор — старт, второй — финиш (строим маршрут).
 function selectNode(nodeId) {
     if (!currentGraph) return; // граф не загружен или не прошёл проверку
@@ -335,12 +376,12 @@ function selectNode(nodeId) {
         clearSelection();
         currentStart = nodeId;
         currentEnd = null;
-        el?.classList.add('start-room');
+        markRoom(el, 'start');
         showFloor(node.floor);
     } else if (nodeId !== currentStart) {
         // Есть старт, выбрали другое место: это финиш, строим маршрут
         currentEnd = nodeId;
-        el?.classList.add('end-room');
+        markRoom(el, 'end');
         if (drawRouteBetween(currentStart, currentEnd)) {
             rememberRoute(currentStart, currentEnd);
             syncUrl(currentStart, currentEnd);
