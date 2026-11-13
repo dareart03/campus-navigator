@@ -3,10 +3,10 @@
 // офлайн — последняя удачно загруженная копия. Всё, что успешно загрузилось, кладём в кеш по ходу работы,
 // а основные файлы кешируем сразу при установке.
 // При выпуске новой версии меняйте номер в имени кеша: старый кеш целиком удалится (activate), и страница с кодом не разойдутся по версиям.
-const CACHE = 'navigator-v2';
+const CACHE = 'navigator-v3';
 const CORE = [
     './', 'index.html', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
-    'data/data.json', 'maps/map1.svg', 'maps/map2.svg', 'maps/map3.svg',
+    'data/data.json',
     'src/app.js', 'src/gestures.js', 'src/graph.js', 'src/heap.js', 'src/culling.js', 'src/nav.js', 'src/session.js', 'src/compass.js',
     'src/search.js', 'src/signs.js', 'src/names.js', 'src/ocr.js', 'src/share.js', 'src/viewmath.js', 'src/vendor/qrcode.js',
 ];
@@ -22,6 +22,12 @@ self.addEventListener('install', event => {
         const cache = await caches.open(CACHE);
         // по одному: если какого-то файла нет, остальные всё равно закешируются
         await Promise.all(CORE.map(url => cache.add(new Request(url, { cache: 'reload' })).catch(() => {})));
+        // планы этажей: сколько их, написано в графе (meta.floors), поэтому здание может быть с любым числом этажей
+        try {
+            const graph = await (await cache.match('data/data.json')).json();
+            const floors = graph.meta?.floors ?? [...new Set(graph.nodes.map(n => n.floor))];
+            await Promise.all(floors.map(n => cache.add(new Request(`maps/map${n}.svg`, { cache: 'reload' })).catch(() => {})));
+        } catch { /* без графа планы закешируются по ходу работы */ }
         await self.skipWaiting();
     })());
 });

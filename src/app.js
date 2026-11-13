@@ -15,8 +15,9 @@ import {
     loadJSON, saveJSON, FAVORITES_KEY, RECENTS_KEY,
 } from './search.js';
 
-const FLOORS = [1, 2, 3];
-const START_FLOOR = 3;
+// Список этажей берётся из графа (meta.floors, его записывает build_graph.py), поэтому здание может быть с любым числом этажей.
+let FLOORS = [];
+let START_FLOOR = 1;
 const NS = 'http://www.w3.org/2000/svg';
 
 // На что можно нажать на карте: аудитории (room-…) и туалеты (man-WC, woman-WC-1, special-WC …)
@@ -49,6 +50,12 @@ async function fetchFile(url, what) {
 }
 
 // --- 1. ЗАГРУЗКА КАРТ (по одному SVG на этаж) ---
+function floorsOf(graph) {
+    const listed = graph?.meta?.floors;
+    const floors = Array.isArray(listed) && listed.length ? listed : [...new Set((graph?.nodes ?? []).map(n => n.floor))];
+    return floors.filter(Number.isInteger).sort((a, b) => a - b);
+}
+
 async function loadMaps() {
     const stage = document.getElementById('map-stage');
     const tabs = document.getElementById('floor-tabs');
@@ -1112,8 +1119,12 @@ async function start() {
     loading.hidden = false;
     clearStatus();
     try {
-        await loadMaps();
         const graph = await loadGraph();
+        FLOORS = floorsOf(graph);
+        if (!FLOORS.length) throw new GraphError('В data.json не указаны этажи: пересоберите граф (python run.py)');
+        START_FLOOR = FLOORS[FLOORS.length - 1];          // открываем верхний этаж, как и раньше
+        currentFloor = START_FLOOR;
+        await loadMaps();
 
         // Сверяем граф с тем, что нарисовано на картах всех этажей
         const rooms = FLOORS.flatMap(f =>
