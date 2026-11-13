@@ -1101,11 +1101,28 @@ async function start() {
 
 // Полоса «нет сети»: показываем, пока связи нет. Приложение при этом работает: план и граф уже загружены,
 // а при следующем запуске их отдаст service worker из кеша (sw.js).
+// navigator.onLine врёт: на телефоне он остаётся true при Wi-Fi без интернета или выключенных данных. Поэтому кроме него
+// проверяем связь запросом: HEAD к своему же файлу. Service worker обрабатывает только GET, значит, ответ из кеша
+// не подменит настоящую проверку.
+const PING_EVERY_MS = 15000, PING_TIMEOUT_MS = 4000;
+
+async function isOnline() {
+    if (navigator.onLine === false) return false;
+    try {
+        const res = await fetch(`sw.js?ping=${Date.now()}`, { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(PING_TIMEOUT_MS) });
+        return res.ok || res.status < 500;
+    } catch {
+        return false;
+    }
+}
+
 function setupNetworkBanner() {
     const banner = document.getElementById('net');
-    const update = () => { banner.hidden = navigator.onLine !== false; };
+    const update = async () => { banner.hidden = await isOnline(); };
     window.addEventListener('online', update);
     window.addEventListener('offline', update);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) update(); });
+    setInterval(() => { if (!document.hidden) update(); }, PING_EVERY_MS);
     update();
 }
 
