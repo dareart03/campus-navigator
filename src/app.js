@@ -9,6 +9,7 @@ import { hashFor, screenFromHash, backAction } from './nav.js';
 import { saveSession, loadSession } from './session.js';
 import { roomNumberIndex, pickRoomNumber, numbersIn } from './signs.js';
 import { buildNameIndex, matchNames } from './names.js';
+import { hasPrev, hasNext, clampStep, visibleSteps, swipeDirection, stepForFloor } from './steps.js';
 import {
     buildSearchIndex, searchPlaces, toggleFavorite, pushRecent, sanitizeFavorites, sanitizeRecents,
     loadJSON, saveJSON, FAVORITES_KEY, RECENTS_KEY,
@@ -254,8 +255,9 @@ function showFloor(floor) {
         floorEl(f).hidden = f !== floor;
         document.getElementById(`tab-${f}`).classList.toggle('active', f === floor);
     });
-    document.querySelectorAll('#route-info li').forEach(li =>
-        li.classList.toggle('current', Number(li.dataset.floor) === floor));
+    // Нажали вкладку этажа при готовом маршруте: показываем ближайший шаг на этом этаже
+    const near = stepForFloor(routeSteps, floor, stepIndex);
+    if (near !== -1 && near !== stepIndex) { stepIndex = near; renderStepWindow(); }
     cullOffscreen();
     gestures?.refresh(); // у этажей может быть чуть другой размер SVG — пересчитать подписи
 }
@@ -268,6 +270,7 @@ function clearSelection() {
     document.querySelectorAll('.pin-start, .pin-end').forEach(el => el.classList.remove(...marks));
     document.querySelectorAll('.route-line, .route-stairs').forEach(el => el.remove());
     document.querySelectorAll('.floor-tabs button').forEach(b => b.classList.remove('has-route'));
+    routeSteps = []; stepIndex = 0;
     const info = document.getElementById('route-info');
     info.className = 'route-info hidden';
     info.replaceChildren();
@@ -432,18 +435,75 @@ function describeSteps(segments, startId, endId) {
     return steps;
 }
 
-function renderRouteInfo(steps, startId, endId) {
+// Шаги маршрута показываются по одному-два за раз: текущий (на карте открыт его этаж) и следующий.
+let routeSteps = [];
+let stepIndex = 0;
+
+function renderRouteInfo(steps) {
+    routeSteps = steps;
+    stepIndex = 0;
     const info = document.getElementById('route-info');
     info.className = 'route-info';
-    info.replaceChildren(Object.assign(document.createElement('strong'), { textContent: 'Маршрут' }));
-    const ol = document.createElement('ol');
-    steps.forEach(s => {
-        const li = Object.assign(document.createElement('li'), { textContent: s.text });
-        li.dataset.floor = s.floor;
-        li.addEventListener('click', () => showFloor(s.floor));
-        ol.append(li);
+    const head = el('div', 'route-head');
+    head.append(Object.assign(document.createElement('strong'), { textContent: 'Маршрут' }),
+        Object.assign(el('span', 'route-count'), { id: 'route-count' }));
+    const nav = el('div', 'route-nav');
+    const prev = Object.assign(el('button', 'route-arrow', '‹'), { id: 'step-prev', type: 'button' });
+    const next = Object.assign(el('button', 'route-arrow', '›'), { id: 'step-next', type: 'button' });
+    prev.setAttribute('aria-label', 'Предыдущий шаг');
+    next.setAttribute('aria-label', 'Следующий шаг');
+    prev.addEventListener('click', () => goToStep(stepIndex - 1));
+    next.addEventListener('click', () => goToStep(stepIndex + 1));
+    const list = Object.assign(document.createElement('ol'), { id: 'route-steps' });
+    nav.append(prev, list, next);
+    attachSwipe(nav);
+    info.replaceChildren(head, nav);
+    renderStepWindow();
+}
+
+function renderStepWindow() {
+    const list = document.getElementById('route-steps');
+    if (!list) return;
+    list.start = stepIndex + 1;
+    list.replaceChildren(...visibleSteps(routeSteps, stepIndex).map(({ step, index, current }) => {
+        const li = Object.assign(document.createElement('li'), { textContent: step.text });
+        li.dataset.floor = step.floor;
+        if (current) li.classList.add('current');
+        li.addEventListener('click', () => (current ? showFloor(step.floor) : goToStep(index)));    // следующий шаг — перейти к нему
+        return li;
+    }));
+    document.getElementById('route-count').textContent = `Шаг ${stepIndex + 1} из ${routeSteps.length}`;
+    // Нет шага слева/справа — нет и стрелки (место под неё остаётся, текст не прыгает)
+    document.getElementById('step-prev').classList.toggle('invisible', !hasPrev(stepIndex));
+    document.getElementById('step-next').classList.toggle('invisible', !hasNext(stepIndex, routeSteps.length));
+}
+
+function goToStep(index) {
+    const next = clampStep(index, routeSteps.length);
+    if (!routeSteps.length || next === stepIndex) return;
+    stepIndex = next;
+    renderStepWindow();
+    showFloor(routeSteps[stepIndex].floor);       // на карте — этаж текущего шага
+}
+
+// Свайп по шагам: влево — дальше, вправо — назад. Вертикальная прокрутка страницы (touch-action: pan-y) не мешает.
+function attachSwipe(target) {
+    let start = null;
+    let swiped = false;
+    target.addEventListener('pointerdown', e => {
+        if (e.target.closest('button')) return;
+        start = { x: e.clientX, y: e.clientY, t: performance.now() };
+        swiped = false;
     });
-    info.append(ol);
+    target.addEventListener('pointerup', e => {
+        if (!start) return;
+        const dir = swipeDirection(e.clientX - start.x, e.clientY - start.y, performance.now() - start.t);
+        start = null;
+        if (dir) { swiped = true; goToStep(stepIndex + dir); }
+    });
+    target.addEventListener('pointercancel', () => { start = null; });
+    // после свайпа браузер может прислать «click» по шагу: он не должен переключать шаг второй раз
+    target.addEventListener('click', e => { if (swiped) { e.stopPropagation(); e.preventDefault(); swiped = false; } }, true);
 }
 
 function drawRouteBetween(startId, endId) {
@@ -477,7 +537,7 @@ function drawRouteBetween(startId, endId) {
         document.getElementById(`tab-${seg.floor}`).classList.add('has-route');
     });
 
-    renderRouteInfo(describeSteps(segments, startId, endId), startId, endId);
+    renderRouteInfo(describeSteps(segments, startId, endId));
     showFloor(segments[0].floor); // показываем этаж, с которого начинается путь
     return true;
 }

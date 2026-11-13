@@ -117,7 +117,7 @@
     /* Комната, выбранная как старт / финиш */
     /* обводка выбранного места: отдельный слой поверх карты, только внешний край (см. markRoom в app.js) */
     .room-outline { pointer-events: none; }
-    .room-outline [mask] > * { fill: none; stroke-width: calc(8px * var(--inv, 1)); stroke-linejoin: round; }   /* только кольцо, не маска */
+    .room-outline [mask] > * { fill: none; stroke-width: calc(12px * var(--inv, 1)); stroke-linejoin: round; }   /* только кольцо, не маска */
     .outline-start { stroke: var(--start); }
     .outline-end   { stroke: var(--end); }
     .floor-map [id^="room-"], .floor-map [id^="man-WC"], .floor-map [id^="woman-WC"], .floor-map [id^="special-WC"] { cursor: pointer; }
@@ -140,8 +140,16 @@
     .route-info { padding: 8px 14px 16px; }
     .route-info.hidden { display: none; }
     .route-info.empty { color: var(--muted); font-size: 0.9375rem; }
-    .route-info ol { margin: 6px 0 0; padding-left: 22px; }
-    .route-info li { padding: 6px 0; cursor: pointer; }
+    .route-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .route-count { color: var(--muted); font-size: 0.875rem; }
+    /* шаги по одному-два: стрелки по бокам, свайп по тексту (вертикальная прокрутка страницы остаётся) */
+    .route-nav { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; margin-top: 4px; touch-action: pan-y; user-select: none; }
+    .route-nav ol { margin: 0; padding-left: 22px; min-width: 0; }
+    .route-info li { padding: 6px 0; cursor: pointer; color: var(--muted); }
+    .route-arrow { width: 44px; height: 44px; padding: 0; font-size: 1.75rem; line-height: 1; cursor: pointer; color: var(--text);
+                   background: var(--control); border: 1px solid var(--border); border-radius: 50%; }
+    .route-arrow:active { border-color: var(--accent); }
+    .route-arrow.invisible { visibility: hidden; }
     /* Ссылка и QR-код маршрута */
     .share { margin-top: 8px; }
     .share-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
