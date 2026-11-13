@@ -348,3 +348,11 @@ test('ближайший туалет из аудитории на 2 и 3 эта
         }
     }
 });
+
+test('специальный туалет (wc-special) есть в данных и достижим из любой аудитории', () => {
+    for (const room of idx.rooms) {
+        const found = findNearest(idx, room, 'wc-special');
+        assert.ok(found, `${room}: нет пути до специального туалета`);
+        assert.equal(idx.nodes.get(found.id).poi, 'wc-special');
+    }
+});

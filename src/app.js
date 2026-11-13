@@ -796,6 +796,7 @@ async function onScanFile(event) {
 const POI_TITLES = {
     'wc-man': 'мужской туалет',
     'wc-woman': 'женский туалет',
+    'wc-special': 'специальный туалет',
     'exit': 'выход',
     'dining': 'столовая',
 };
@@ -816,9 +817,7 @@ function routeToNearest(poi) {
     }
     resetRoute();            // убираем прежний маршрут, старт ставим заново
     selectNode(from);
-    selectNode(found.id);
-    const node = currentIndex.nodes.get(found.id);
-    showStatus('info', `Ближайшее: ${node.label} (${node.floor} этаж)`);
+    selectNode(found.id);          // без плашки «Ближайшее: …»: маршрут и шаги под картой уже говорят, куда идти
 }
 
 function setupQuickButtons() {
