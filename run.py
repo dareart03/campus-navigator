@@ -138,7 +138,9 @@ def run_tests():
     if result.returncode == 0:
         ok(f'все тесты прошли ({nums["pass"]} из {nums["tests"]})')
         return
-    say(result.stdout[-4000:])
+    failed = [l.split(' - ', 1)[-1] for l in result.stdout.splitlines() if l.startswith('not ok')]
+    for name in failed[:15]:
+        say(f'    - не прошёл: {name}')
     warn(f'тестов не прошло: {nums["fail"]}.')
     warn('Часть тестов проверяет данные именно этого здания (аудитории 311, 118 и т. д.). Если вы подставили свои карты, '
          'такие тесты могут падать: это ожидаемо. Тесты кода (поиск, жесты, шаги маршрута) от карт не зависят.')
