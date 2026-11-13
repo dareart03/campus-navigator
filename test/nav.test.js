@@ -20,6 +20,12 @@ test('screenFromHash: экран «поделиться» без готовог�
     assert.equal(screenFromHash('#/search', { canShare: false }), 'search');
 });
 
+test('экран «Фото двери» (scan) доступен всегда и по своему адресу', () => {
+    assert.ok(SCREENS.includes('scan'));
+    assert.equal(hashFor('scan'), '#/scan');
+    assert.equal(screenFromHash('#/scan', { canShare: false }), 'scan');
+});
+
 test('backAction: есть что откатывать — назад по истории, иначе на карту', () => {
     assert.equal(backAction(2), 'history-back');
     assert.equal(backAction(1), 'history-back');

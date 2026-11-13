@@ -1,0 +1,149 @@
+// Поиск номера аудитории на фото таблички (S1). Без DOM и без OCR-библиотеки: работает с массивом яркости,
+// поэтому тестируется в Node. Распознавание цифр (tesseract.js) подключается отдельно, в ocr.js.
+//
+// Идея: целиком фото распознаётся плохо (мелкий номер тонет в объявлениях и расписаниях),
+// поэтому сначала находим «похожие на номер» места, а OCR запускаем только на них:
+//   1. тёмные пятна на светлом фоне (адаптивный порог по интегральному изображению);
+//   2. связные области — кандидаты в цифры (подходящие размер и пропорции);
+//   3. цифры одной высоты, стоящие в ряд, объединяются в рамку номера.
+
+export const WORK_WIDTH = 960;   // ширина, к которой приводится фото перед поиском
+
+// Яркость из RGBA (как у canvas.getImageData)
+export function toGray(rgba, width, height) {
+    const gray = new Uint8Array(width * height);
+    for (let i = 0, p = 0; i < gray.length; i++, p += 4)
+        gray[i] = (rgba[p] * 77 + rgba[p + 1] * 150 + rgba[p + 2] * 29) >> 8;
+    return gray;
+}
+
+// Тёмное на светлом: пиксель «чернила», если заметно темнее среднего в окрестности.
+// Среднее считается по интегральному изображению, поэтому работает за O(w·h).
+export function darkMask(gray, w, h, { radius = 20, offset = 28 } = {}) {
+    const integral = new Float64Array((w + 1) * (h + 1));
+    for (let y = 0; y < h; y++) {
+        let row = 0;
+        for (let x = 0; x < w; x++) {
+            row += gray[y * w + x];
+            integral[(y + 1) * (w + 1) + x + 1] = integral[y * (w + 1) + x + 1] + row;
+        }
+    }
+    const mask = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+        const y0 = Math.max(0, y - radius), y1 = Math.min(h, y + radius + 1);
+        for (let x = 0; x < w; x++) {
+            const x0 = Math.max(0, x - radius), x1 = Math.min(w, x + radius + 1);
+            const sum = integral[y1 * (w + 1) + x1] - integral[y0 * (w + 1) + x1]
+                - integral[y1 * (w + 1) + x0] + integral[y0 * (w + 1) + x0];
+            const mean = sum / ((x1 - x0) * (y1 - y0));
+            if (gray[y * w + x] < mean - offset) mask[y * w + x] = 1;
+        }
+    }
+    return mask;
+}
+
+// Связные области маски (8 соседей). Возвращает рамки с площадью.
+export function components(mask, w, h) {
+    const seen = new Uint8Array(w * h);
+    const stack = new Int32Array(w * h);
+    const found = [];
+    for (let start = 0; start < mask.length; start++) {
+        if (!mask[start] || seen[start]) continue;
+        let top = 0, area = 0;
+        let x0 = w, y0 = h, x1 = 0, y1 = 0;
+        stack[top++] = start; seen[start] = 1;
+        while (top) {
+            const p = stack[--top];
+            const x = p % w, y = (p - x) / w;
+            area++;
+            if (x < x0) x0 = x; if (x > x1) x1 = x;
+            if (y < y0) y0 = y; if (y > y1) y1 = y;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                const nx = x + dx, ny = y + dy;
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                const q = ny * w + nx;
+                if (mask[q] && !seen[q]) { seen[q] = 1; stack[top++] = q; }
+            }
+        }
+        found.push({ x0, y0, x1, y1, w: x1 - x0 + 1, h: y1 - y0 + 1, area });
+    }
+    return found;
+}
+
+// Подходит ли область на роль цифры: размер, пропорции, «плотность» чернил
+export function looksLikeDigit(c, imgH) {
+    const minH = imgH * 0.018, maxH = imgH * 0.2;
+    if (c.h < minH || c.h > maxH) return false;
+    const ratio = c.w / c.h;                    // «1» узкая, «0» широкая
+    if (ratio < 0.2 || ratio > 1.0) return false;
+    const fill = c.area / (c.w * c.h);
+    return fill > 0.18 && fill < 0.95;
+}
+
+// Склеить цифры в ряды: одинаковая высота, одна строка, небольшие промежутки
+export function groupDigits(digits, { minLen = 3, maxLen = 4 } = {}) {
+    const sorted = [...digits].sort((a, b) => a.x0 - b.x0);
+    const used = new Set();
+    const runs = [];
+    for (let i = 0; i < sorted.length; i++) {
+        if (used.has(i)) continue;
+        const run = [sorted[i]];
+        let last = sorted[i];
+        for (let j = i + 1; j < sorted.length; j++) {
+            const c = sorted[j];
+            if (used.has(j)) continue;
+            const hMax = Math.max(last.h, c.h), hMin = Math.min(last.h, c.h);
+            const gap = c.x0 - last.x1;
+            const dy = Math.abs((c.y0 + c.y1) / 2 - (last.y0 + last.y1) / 2);
+            if (gap < -2 || gap > hMax * 1.0) { if (gap > hMax * 1.0) break; else continue; }
+            if (hMin / hMax < 0.75 || dy > hMax * 0.25) continue;
+            run.push(c); used.add(j); last = c;
+        }
+        if (run.length >= minLen && run.length <= maxLen) {
+            used.add(i);
+            const x0 = Math.min(...run.map(c => c.x0)), x1 = Math.max(...run.map(c => c.x1));
+            const y0 = Math.min(...run.map(c => c.y0)), y1 = Math.max(...run.map(c => c.y1));
+            runs.push({ x0, y0, x1, y1, h: y1 - y0 + 1, count: run.length });
+        }
+    }
+    return runs;
+}
+
+// Места, где может быть номер: самые крупные ряды цифр первыми
+export function findNumberRegions(gray, w, h, { limit = 6 } = {}) {
+    const mask = darkMask(gray, w, h);
+    const digits = components(mask, w, h).filter(c => looksLikeDigit(c, h));
+    return groupDigits(digits).sort((a, b) => b.h - a.h).slice(0, limit);
+}
+
+// --- Выбор номера по результатам OCR ---
+
+// Из текста — подходящие числа (2–4 цифры), без нулей в начале
+export const numbersIn = text => [...String(text).matchAll(/\d{2,4}/g)].map(m => m[0]).filter(n => n[0] !== '0');
+
+// Какие аудитории и номера есть в графе: «311» → id узла
+export function roomNumberIndex(nodes) {
+    const index = new Map();
+    for (const n of nodes) {
+        if (n.type !== 'room') continue;
+        const m = /^f\d+-room-(\d{3})$/.exec(n.id);
+        if (m) index.set(m[1], n.id);
+    }
+    return index;
+}
+
+// Выбрать лучшего кандидата. reads: [{ text, confidence, h }] — что прочитано в каждой рамке.
+// Побеждает номер, который есть в здании; голоса суммируются (на двери часто две таблички с одним номером),
+// крупная и уверенно прочитанная рамка весит больше. Возвращает отсортированный список {number, id, score}.
+export function pickRoomNumber(reads, roomIndex) {
+    const votes = new Map();
+    for (const r of reads) {
+        for (const n of numbersIn(r.text)) {
+            if (!roomIndex.has(n)) continue;
+            const weight = (0.4 + Math.min(r.confidence ?? 50, 100) / 100) * (r.h ?? 30);
+            votes.set(n, (votes.get(n) ?? 0) + weight);
+        }
+    }
+    return [...votes].map(([number, score]) => ({ number, id: roomIndex.get(number), score }))
+        .sort((a, b) => b.score - a.score);
+}
