@@ -8,7 +8,7 @@
 //   3. цифры одной высоты, стоящие в ряд, объединяются в рамку номера.
 
 export const WORK_WIDTH = 960;   // ширина, к которой приводится фото перед поиском номера
-export const NAME_WIDTH = 2000;  // для надписей снимок увеличивают: буквы должны быть не мельче ~20 px
+export const NAME_WIDTH = 1600;  // ширина для поиска строк текста: мелкие надписи (~10 px) ещё находятся, а кадр не слишком тяжёлый
 
 // Яркость из RGBA (как у canvas.getImageData)
 export function toGray(rgba, width, height) {
@@ -138,6 +138,58 @@ export function findNumberRegions(gray, w, h, { limit = 6 } = {}) {
     const mask = darkMask(gray, w, h);
     const digits = components(mask, w, h).filter(c => looksLikeDigit(c, h));
     return groupDigits(digits).sort((a, b) => b.h - a.h).slice(0, limit);
+}
+
+// --- Строки текста (для надписей) ---
+// Целиком фото с надписями Tesseract читает плохо: разбираться в раскладке страницы на фоне дерева и бумажек он не умеет.
+// Поэтому, как и с номером, сначала находим строки, а читаем каждую отдельно (режим «одна строка»).
+
+// Буква-кандидат: размер в пределах «текста», не слишком длинная и не пятно
+export function looksLikeLetter(c, imgH) {
+    if (c.h < 8 || c.h > imgH * 0.12) return false;
+    if (c.w > c.h * 8) return false;                  // длинная линия (рамка, подчёркивание)
+    if (c.w < c.h * 0.12) return false;
+    const fill = c.area / (c.w * c.h);
+    return fill > 0.12 && fill < 0.97;
+}
+
+// Склеить буквы в строки: одна высота, общая линия, промежуток не больше пробела между словами.
+// Возвращает рамки строк {x0,y0,x1,y1,h,count}; h — высота рамки строки.
+export function groupLines(letters, { minCount = 3 } = {}) {
+    const sorted = [...letters].sort((a, b) => a.x0 - b.x0);
+    const parent = sorted.map((_, i) => i);
+    const find = i => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    for (let i = 0; i < sorted.length; i++) {
+        const a = sorted[i];
+        for (let j = i + 1; j < sorted.length; j++) {
+            const b = sorted[j];
+            const maxH = Math.max(a.h, b.h);
+            if (b.x0 - a.x1 > maxH * 1.3) { if (b.x0 - a.x0 > maxH * 14) break; else continue; }
+            const overlap = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) + 1;
+            const minH = Math.min(a.h, b.h);
+            if (overlap < minH * 0.5) continue;       // не на одной линии
+            if (maxH / minH > 2.6) continue;          // разный размер: это другой текст
+            parent[find(i)] = find(j);
+        }
+    }
+    const groups = new Map();
+    sorted.forEach((c, i) => { const r = find(i); (groups.get(r) ?? groups.set(r, []).get(r)).push(c); });
+    const lines = [];
+    for (const g of groups.values()) {
+        if (g.length < minCount) continue;
+        const x0 = Math.min(...g.map(c => c.x0)), x1 = Math.max(...g.map(c => c.x1));
+        const y0 = Math.min(...g.map(c => c.y0)), y1 = Math.max(...g.map(c => c.y1));
+        if ((x1 - x0 + 1) < (y1 - y0 + 1) * 1.8) continue;      // строка длиннее своей высоты
+        lines.push({ x0, y0, x1, y1, h: y1 - y0 + 1, count: g.length });
+    }
+    return lines;
+}
+
+// Строки текста на снимке: самые крупные первыми (заголовки и таблички несут больше всего смысла)
+export function findTextLines(gray, w, h, { limit = 30 } = {}) {
+    const mask = darkMask(gray, w, h, { radius: Math.round(w * 0.015), offset: 22 });
+    const letters = components(mask, w, h).filter(c => looksLikeLetter(c, h));
+    return groupLines(letters).sort((a, b) => b.h * b.count - a.h * a.count).slice(0, limit);
 }
 
 // --- Выбор номера по результатам OCR ---

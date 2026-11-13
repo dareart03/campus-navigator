@@ -14,15 +14,25 @@ const isWord = t => t.length >= 4 && /^[а-я]+$/.test(t);          // знач�
 const isNumeral = t => /^\d{1,3}$/.test(t);
 const stemOf = w => w.slice(0, STEM);
 
-// Расстояние Левенштейна не больше 1 (для устойчивости к одной ошибке OCR)
-function withinOneEdit(a, b) {
-    if (Math.abs(a.length - b.length) > 1) return false;
-    let i = 0;
-    while (i < a.length && i < b.length && a[i] === b[i]) i++;
-    if (i === a.length && i === b.length) return true;
-    if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
-    const [long, short] = a.length > b.length ? [a, b] : [b, a];
-    return long.slice(i + 1) === short.slice(i);
+// Расстояние Левенштейна (строки короткие, поэтому обычная таблица)
+function distance(a, b) {
+    let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+        const cur = [i];
+        for (let j = 1; j <= b.length; j++)
+            cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        prev = cur;
+    }
+    return prev[b.length];
+}
+
+// Прочитано ли слово места в слове OCR: то же слово по началу (падеж), до двух ошибок OCR в длинном слове
+// или обрывок слова («хранен» вместо «хранения»)
+function sameWord(read, word) {
+    if (read.slice(0, STEM) === word.slice(0, STEM) && Math.min(read.length, word.length) >= STEM) return true;
+    if (read.length >= STEM && word.startsWith(read)) return true;
+    const tolerance = word.length >= 9 ? 2 : word.length >= 6 ? 1 : 0;
+    return tolerance > 0 && Math.abs(read.length - word.length) <= tolerance && distance(read, word) <= tolerance;
 }
 
 // Названия места: основное и синонимы, без номера в начале («303 — Кафедра …» → «Кафедра …»)
@@ -51,28 +61,44 @@ export function buildNameIndex(nodes) {
     return { places, weight };
 }
 
-// Найти места по тексту. Возвращает [{ id, score, evidence }], лучшие первыми.
+// Найти места по тексту. text — строка или список строк { text, h } (h — высота строки на снимке: крупные надписи
+// на двери важнее мелких бумажек рядом). Возвращает [{ id, score, evidence }], лучшие первыми.
 export function matchNames(index, text, limit = 3) {
-    const seen = tokens(text);
-    const words = [...new Set(seen.filter(isWord))];
-    const stems = new Set(words.map(stemOf));
-    const numerals = new Set(seen.filter(isNumeral));
-    const long = words.filter(w => w.length >= 7);
-    const found = word => stems.has(stemOf(word)) || (word.length >= 7 && long.some(w => withinOneEdit(w, word)));
+    const segments = typeof text === 'string' ? [{ text, h: 1 }] : text;
+    const reads = [];                                          // слова, прочитанные OCR, с размером
+    const numerals = new Set();
+    for (const { text: t, h } of segments) {
+        for (const tok of tokens(t)) {
+            if (isWord(tok)) reads.push({ tok, h });
+            else if (isNumeral(tok)) numerals.add(tok);
+        }
+    }
+    // Слово места -> размер самой крупной надписи, где оно прочитано (0 — не найдено). Считаем один раз на слово.
+    const sizeOf = new Map();
+    const found = word => {
+        if (!sizeOf.has(word)) {
+            let size = 0;
+            for (const r of reads) if (r.h > size && sameWord(r.tok, word)) size = r.h;
+            sizeOf.set(word, size);
+        }
+        return sizeOf.get(word);
+    };
 
     const results = [];
     for (const place of index.places) {
         let best = 0, evidence = 0;
         for (const { words: ws, numerals: ns } of place.phrases) {
-            if (!ws.length || !ns.every(n => numerals.has(n))) continue;      // «раздевалка 3» без «3» не подходит
-            let total = 0, matched = 0;
+            if (!ws.length) continue;
+            let total = 0, matched = 0, sized = 0;
             for (const w of ws) {
-                const wt = index.weight(w);
+                const wt = index.weight(w), size = found(w);
                 total += wt;
-                if (found(w)) matched += wt;
+                if (size) { matched += wt; sized += wt * size; }
             }
-            const score = matched / total;
-            if (score >= MIN_SCORE) { best = Math.max(best, score); evidence += matched; }
+            // Цифра в названии («раздевалка 3») не прочиталась — это не отказ (мелкая цифра часто не читается), но минус
+            const missing = ns.filter(n => !numerals.has(n)).length;
+            const score = (matched / total) * Math.pow(0.7, missing);
+            if (score >= MIN_SCORE) { best = Math.max(best, score); evidence += sized; }
         }
         if (best) results.push({ id: place.id, score: best, evidence });
     }

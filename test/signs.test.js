@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { toGray, binarize, stretchContrast, darkMask, components, looksLikeDigit, groupDigits, findNumberRegions, numbersIn, roomNumberIndex, pickRoomNumber } from '../src/signs.js';
+import { toGray, binarize, stretchContrast, findTextLines, darkMask, components, looksLikeDigit, groupDigits, findNumberRegions, numbersIn, roomNumberIndex, pickRoomNumber } from '../src/signs.js';
 
 const graph = JSON.parse(readFileSync(new URL('../data/data.json', import.meta.url), 'utf8'));
 const rooms = roomNumberIndex(graph.nodes);
@@ -120,4 +120,30 @@ test('stretchContrast: тусклый кадр растягивается на �
     assert.ok(Math.min(...out) <= 5 && Math.max(...out) >= 250);
     const flat = new Uint8Array(100).fill(90);
     assert.deepEqual([...stretchContrast(flat)], [...flat]);
+});
+
+// Строки текста: «буквы» — маленькие тёмные пятна в ряд
+const letters = (x, y, count, w = 10, h = 18, gap = 4) =>
+    Array.from({ length: count }, (_, k) => ({ x: x + k * (w + gap), y, w, h }));
+
+test('findTextLines: слово из нескольких букв — это строка, одиночная буква и столбик — нет', () => {
+    const img = photo(500, 300, [...letters(50, 50, 8), { x: 400, y: 200, w: 10, h: 18 },
+        { x: 300, y: 60, w: 10, h: 18 }, { x: 300, y: 90, w: 10, h: 18 }, { x: 300, y: 120, w: 10, h: 18 }]);
+    const lines = findTextLines(img, 500, 300);
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0].count, 8);
+});
+
+test('findTextLines: две строки одна под другой не склеиваются; крупная идёт раньше мелкой', () => {
+    const img = photo(600, 300, [...letters(40, 40, 6, 14, 28, 6), ...letters(40, 150, 6, 10, 16, 4)]);
+    const lines = findTextLines(img, 600, 300);
+    assert.equal(lines.length, 2);
+    assert.ok(lines[0].h > lines[1].h);
+});
+
+test('findTextLines: буквы разного размера рядом (заголовок и мелкий текст) не склеиваются', () => {
+    const img = photo(600, 400, [...letters(40, 40, 4, 16, 40, 8), ...letters(150, 50, 4, 10, 14, 4)]);
+    const lines = findTextLines(img, 600, 400);
+    assert.equal(lines.length, 2);
+    assert.ok(lines.every(l => l.count === 4));
 });

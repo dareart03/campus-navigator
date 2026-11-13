@@ -663,10 +663,10 @@ async function onScanFile(event) {
         }
         // Номера нет (кафедра, «Серверная», «Спортивный зал»): читаем надписи и сверяем с названиями мест
         const { readLabels } = await import('./ocr.js');
-        const text = await readLabels(file, say);
+        const lines = await readLabels(file, say);
         if (run !== scanRun) return;
         nameIndex ??= buildNameIndex(currentGraph.nodes);
-        const byName = matchNames(nameIndex, text);
+        const byName = matchNames(nameIndex, lines);
         if (byName.length) {
             showScanPicks(byName.map(m => m.id), byName.length > 1 ? 'По надписи подходят несколько мест. Выберите своё:' : 'Нашла по надписи:');
             return;
