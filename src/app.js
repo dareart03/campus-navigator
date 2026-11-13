@@ -8,6 +8,7 @@ import { invertMatrix, visibleRect, updateVisibility } from './culling.js';
 import { hashFor, screenFromHash, backAction } from './nav.js';
 import { saveSession, loadSession } from './session.js';
 import { roomNumberIndex, pickRoomNumber, numbersIn } from './signs.js';
+import { buildNameIndex, matchNames } from './names.js';
 import {
     buildSearchIndex, searchPlaces, toggleFavorite, pushRecent, sanitizeFavorites, sanitizeRecents,
     loadJSON, saveJSON, FAVORITES_KEY, RECENTS_KEY,
@@ -600,7 +601,8 @@ function setupSearch() {
     document.getElementById('search-open').addEventListener('click', () => openScreen('search'));
     document.getElementById('btn-share').addEventListener('click', () => openScreen('share'));
     document.getElementById('scan-open').addEventListener('click', () => openScreen('scan'));
-    document.getElementById('scan-file').addEventListener('change', onScanFile);
+    document.getElementById('scan-camera').addEventListener('change', onScanFile);
+    document.getElementById('scan-gallery').addEventListener('change', onScanFile);
     document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', goBack));
     // Кнопка «Назад» браузера или жест на телефоне: экран берём из адреса
     window.addEventListener('popstate', () => renderScreen(screenFromHash(location.hash, { canShare: canShare() })));
@@ -609,6 +611,7 @@ function setupSearch() {
 // --- S1. СТАРТ ПО ФОТО ТАБЛИЧКИ ---
 // Фото -> рамки с цифрами (signs.js) -> OCR только по ним (ocr.js) -> номер, который есть в здании -> старт маршрута.
 // Распознанное предлагаем как кнопку, а не принимаем молча: ошибка распознавания не должна ставить старт не туда.
+let nameIndex = null;       // индекс названий для поиска по надписи (строится один раз)
 let scanRun = 0;            // номер последнего запуска: устаревший результат (после «Назад» или нового фото) не показываем
 let scanUrl = null;
 
@@ -618,11 +621,20 @@ function clearScan() {
     const preview = document.getElementById('scan-preview');
     preview.hidden = true; preview.removeAttribute('src');
     document.getElementById('scan-result').replaceChildren();
-    document.getElementById('scan-file').value = '';        // чтобы то же фото можно было выбрать ещё раз
+    for (const id of ['scan-camera', 'scan-gallery']) document.getElementById(id).value = '';     // чтобы то же фото можно было выбрать ещё раз
 }
 
 function startFromScan(nodeId) {
     goBack().then(() => { resetRoute(); selectNode(nodeId); });
+}
+
+function showScanPicks(ids, title) {
+    const buttons = ids.map((id, i) => {
+        const b = el('button', i === 0 ? 'primary' : '', `${i === 0 ? 'Начать отсюда: ' : ''}${shortLabelSafe(id)} (${currentIndex.nodes.get(id).floor} этаж)`);
+        b.addEventListener('click', () => startFromScan(id));
+        return b;
+    });
+    showScanMessage(el('p', '', title), ...buttons);
 }
 
 function showScanMessage(...parts) {
@@ -645,24 +657,29 @@ async function onScanFile(event) {
         if (run !== scanRun) return;
         const rooms = roomNumberIndex(currentGraph.nodes);
         const picks = pickRoomNumber(reads, rooms).slice(0, 3);
-        if (!picks.length) {
-            const seen = [...new Set(reads.flatMap(r => numbersIn(r.text)))];
-            const retry = el('button', '', '🔍 Найти аудиторию в поиске');
-            retry.addEventListener('click', () => goBack().then(() => openScreen('search')));
-            showScanMessage(
-                el('p', '', 'Номер аудитории не распознан.'),
-                el('p', 'scan-note', seen.length
-                    ? `Нашла только ${seen.join(', ')}: такой аудитории нет в здании. `
-                    : 'Попробуйте снять ближе и ровнее, чтобы номер был крупным и без бликов.'),
-                retry);
+        if (picks.length) {
+            showScanPicks(picks.map(p => p.id), picks.length > 1 ? 'Нашла несколько номеров. Выберите свой:' : 'Номер на двери:');
             return;
         }
-        const buttons = picks.map((p, i) => {
-            const b = el('button', i === 0 ? 'primary' : '', `${i === 0 ? 'Начать отсюда: ' : ''}${shortLabelSafe(p.id)} (${currentIndex.nodes.get(p.id).floor} этаж)`);
-            b.addEventListener('click', () => startFromScan(p.id));
-            return b;
-        });
-        showScanMessage(el('p', '', picks.length > 1 ? 'Нашла несколько номеров. Выберите свой:' : 'Номер на двери:'), ...buttons);
+        // Номера нет (кафедра, «Серверная», «Спортивный зал»): читаем надписи и сверяем с названиями мест
+        const { readLabels } = await import('./ocr.js');
+        const text = await readLabels(file, say);
+        if (run !== scanRun) return;
+        nameIndex ??= buildNameIndex(currentGraph.nodes);
+        const byName = matchNames(nameIndex, text);
+        if (byName.length) {
+            showScanPicks(byName.map(m => m.id), byName.length > 1 ? 'По надписи подходят несколько мест. Выберите своё:' : 'Нашла по надписи:');
+            return;
+        }
+        const seen = [...new Set(reads.flatMap(r => numbersIn(r.text)))];
+        const search = el('button', '', '🔍 Найти аудиторию в поиске');
+        search.addEventListener('click', () => goBack().then(() => openScreen('search')));
+        showScanMessage(
+            el('p', '', 'Номер и надпись не распознаны.'),
+            el('p', 'scan-note', seen.length
+                ? `Нашла только ${seen.join(', ')}: такой аудитории нет в здании. `
+                : 'Попробуйте снять ближе и ровнее: чтобы номер или надпись были крупными и без бликов.'),
+            search);
     } catch (err) {
         if (run !== scanRun) return;
         const retry = el('button', '', 'Повторить');

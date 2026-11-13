@@ -152,7 +152,8 @@
     .share-empty { color: var(--muted); }
     .qr svg { display: block; width: 100%; height: auto; }
     .scan-hint { margin: 0 0 12px; color: var(--muted); font-size: 0.9375rem; line-height: 1.4; }
-    .scan-pick { display: block; text-align: center; padding: 14px; font-size: 1rem; cursor: pointer; color: var(--text);
+    .scan-picks { display: flex; gap: 8px; }
+    .scan-pick { flex: 1; display: block; text-align: center; padding: 14px; font-size: 1rem; cursor: pointer; color: var(--text);
                  background: var(--control); border: 1px solid var(--border); border-radius: 8px; }
     .scan-pick:focus-within, .scan-pick:active { border-color: var(--accent); }
     .scan-pick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
@@ -230,11 +231,17 @@
       <h1>Фото двери</h1>
     </div>
     <div class="screen-body padded">
-      <p class="scan-hint">Сфотографируйте табличку с номером аудитории рядом с вами: она станет началом маршрута. Снимайте так, чтобы номер был крупным и чётким.</p>
-      <label class="scan-pick">
-        <input id="scan-file" type="file" accept="image/*" capture="environment">
-        <span>📷 Сделать или выбрать фото</span>
-      </label>
+      <p class="scan-hint">Сфотографируйте табличку рядом с вами: номер аудитории или надпись (кафедра, «Серверная», «Спортивный зал»). Это место станет началом маршрута. Снимайте так, чтобы текст был крупным и чётким.</p>
+      <div class="scan-picks">
+        <label class="scan-pick">
+          <input id="scan-camera" type="file" accept="image/*" capture="environment">
+          <span>📷 Снять</span>
+        </label>
+        <label class="scan-pick">
+          <input id="scan-gallery" type="file" accept="image/*">
+          <span>🖼 Из галереи</span>
+        </label>
+      </div>
       <img id="scan-preview" class="scan-preview" alt="Выбранное фото двери" hidden>
       <div id="scan-result" class="scan-result" role="status" aria-live="polite"></div>
     </div>

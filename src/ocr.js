@@ -1,22 +1,28 @@
 // Распознавание номера на фото двери (S1): канвас + tesseract.js. Тяжёлую часть (OCR) выполняет веб-воркер,
 // поэтому страница не зависает; библиотека подгружается только при первом открытии экрана «Фото двери».
 // Все файлы библиотеки лежат в src/vendor/tesseract/ (без внешних серверов, работает офлайн после первой загрузки).
-import { WORK_WIDTH, toGray, findNumberRegions } from './signs.js';
+import { WORK_WIDTH, NAME_WIDTH, toGray, binarize, stretchContrast, findNumberRegions } from './signs.js';
 
+const MAX_SIDE = 2400;
 const VENDOR = new URL('./vendor/tesseract/', import.meta.url).href;
 let workerPromise = null;
+let ruWorkerPromise = null;
+
+async function createWorker(lang, status, onStatus) {
+    onStatus(status);
+    const { default: Tesseract } = await import('./vendor/tesseract/tesseract.esm.min.js');
+    return Tesseract.createWorker(lang, 1, {
+        workerPath: VENDOR + 'worker.min.js',
+        corePath: VENDOR,
+        langPath: VENDOR,                    // ищет <язык>.traineddata.gz
+        gzip: true,
+    });
+}
 
 // Один воркер на всё время работы: модель загружается один раз
 export function loadOcr(onStatus = () => {}) {
     workerPromise ??= (async () => {
-        onStatus('Загружаю распознавание (один раз, около 7 МБ)…');
-        const { default: Tesseract } = await import('./vendor/tesseract/tesseract.esm.min.js');
-        const worker = await Tesseract.createWorker('eng', 1, {
-            workerPath: VENDOR + 'worker.min.js',
-            corePath: VENDOR,
-            langPath: VENDOR,                    // ищет eng.traineddata.gz
-            gzip: true,
-        });
+        const worker = await createWorker('eng', 'Загружаю распознавание (один раз, около 7 МБ)…', onStatus);
         // Читаем только цифры и только одну строку: рамки уже вырезаны под номер
         await worker.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '7' });
         return worker;
@@ -26,10 +32,19 @@ export function loadOcr(onStatus = () => {}) {
     return workerPromise;
 }
 
+// Русская модель нужна только для надписей и грузится, когда номера на фото не нашлось
+export function loadRussianOcr(onStatus = () => {}) {
+    ruWorkerPromise ??= createWorker('rus', 'Загружаю русский язык (один раз, около 3 МБ)…', onStatus);
+    ruWorkerPromise.catch(() => { ruWorkerPromise = null; });
+    return ruWorkerPromise;
+}
+
 // Фото -> канвас рабочей ширины. imageOrientation учитывает поворот из EXIF (снимки с телефона).
-async function drawPhoto(file) {
+async function drawPhoto(file, targetWidth = WORK_WIDTH, upscale = false) {
     const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-    const scale = Math.min(1, WORK_WIDTH / bitmap.width);
+    let scale = targetWidth / bitmap.width;
+    if (!upscale) scale = Math.min(1, scale);
+    scale = Math.min(scale, MAX_SIDE / Math.max(bitmap.width, bitmap.height));    // очень большие снимки не раздуваем
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);
@@ -75,4 +90,32 @@ export async function readPhoto(file, onStatus = () => {}) {
         reads.push({ text: data.text.trim(), confidence: data.confidence, h: r.h });
     }
     return reads;
+}
+
+// Прочитать надписи на двери (кафедра, «Серверная», «Спортивный зал»). Дольше, чем номер, поэтому зовём, когда номера нет.
+// Читаем дважды: обычную копию с выровненной яркостью и чёрно-белую (она убирает текстуру дерева и блики);
+// тексты склеиваем, а сопоставление с названиями (names.js) само отсеет мусор.
+export async function readLabels(file, onStatus = () => {}) {
+    const worker = await loadRussianOcr(onStatus);
+    onStatus('Читаю надписи…');
+    const { canvas, ctx } = await drawPhoto(file, NAME_WIDTH, true);
+    const { width: w, height: h } = canvas;
+    const gray = toGray(ctx.getImageData(0, 0, w, h).data, w, h);
+    const texts = [];
+    for (const pixels of [stretchContrast(gray), binarize(gray, w, h)]) {
+        const { data } = await worker.recognize(grayCanvas(pixels, w, h));
+        texts.push(data.text);
+    }
+    return texts.join('\n');
+}
+
+function grayCanvas(gray, w, h) {
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const image = new ImageData(w, h);
+    for (let i = 0, p = 0; i < gray.length; i++, p += 4) {
+        image.data[p] = image.data[p + 1] = image.data[p + 2] = gray[i]; image.data[p + 3] = 255;
+    }
+    canvas.getContext('2d').putImageData(image, 0, 0);
+    return canvas;
 }

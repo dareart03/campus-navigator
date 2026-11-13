@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { toGray, darkMask, components, looksLikeDigit, groupDigits, findNumberRegions, numbersIn, roomNumberIndex, pickRoomNumber } from '../src/signs.js';
+import { toGray, binarize, stretchContrast, darkMask, components, looksLikeDigit, groupDigits, findNumberRegions, numbersIn, roomNumberIndex, pickRoomNumber } from '../src/signs.js';
 
 const graph = JSON.parse(readFileSync(new URL('../data/data.json', import.meta.url), 'utf8'));
 const rooms = roomNumberIndex(graph.nodes);
@@ -104,4 +104,20 @@ test('pickRoomNumber: две таблички с одним номером ус�
     assert.equal(twoSigns[0].number, '116');
     const bigWins = pickRoomNumber([{ text: '118', confidence: 95, h: 67 }, { text: '117', confidence: 60, h: 17 }], rooms);
     assert.equal(bigWins[0].number, '118');
+});
+
+test('binarize: чернила — 0, фон — 255, ровный фон не даёт чернил', () => {
+    const img = photo(100, 100, [{ x: 40, y: 40, w: 20, h: 30 }]);
+    const bw = binarize(img, 100, 100);
+    assert.ok(bw.includes(0) && bw.includes(255));
+    assert.ok(bw.every(v => v === 0 || v === 255));
+    assert.ok(binarize(new Uint8Array(2500).fill(120), 50, 50).every(v => v === 255));
+});
+
+test('stretchContrast: тусклый кадр растягивается на весь диапазон, ровный не портится', () => {
+    const dim = Uint8Array.from({ length: 1000 }, (_, i) => 100 + (i % 50));
+    const out = stretchContrast(dim);
+    assert.ok(Math.min(...out) <= 5 && Math.max(...out) >= 250);
+    const flat = new Uint8Array(100).fill(90);
+    assert.deepEqual([...stretchContrast(flat)], [...flat]);
 });

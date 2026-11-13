@@ -7,7 +7,8 @@
 //   2. связные области — кандидаты в цифры (подходящие размер и пропорции);
 //   3. цифры одной высоты, стоящие в ряд, объединяются в рамку номера.
 
-export const WORK_WIDTH = 960;   // ширина, к которой приводится фото перед поиском
+export const WORK_WIDTH = 960;   // ширина, к которой приводится фото перед поиском номера
+export const NAME_WIDTH = 2000;  // для надписей снимок увеличивают: буквы должны быть не мельче ~20 px
 
 // Яркость из RGBA (как у canvas.getImageData)
 export function toGray(rgba, width, height) {
@@ -15,6 +16,21 @@ export function toGray(rgba, width, height) {
     for (let i = 0, p = 0; i < gray.length; i++, p += 4)
         gray[i] = (rgba[p] * 77 + rgba[p + 1] * 150 + rgba[p + 2] * 29) >> 8;
     return gray;
+}
+
+// Растянуть яркость на весь диапазон (1% самых тёмных и светлых пикселей отбрасываются)
+export function stretchContrast(gray) {
+    const hist = new Uint32Array(256);
+    for (const v of gray) hist[v]++;
+    const cut = gray.length * 0.01;
+    let lo = 0, hi = 255, acc = 0;
+    for (; lo < 255; lo++) { acc += hist[lo]; if (acc > cut) break; }
+    acc = 0;
+    for (; hi > 0; hi--) { acc += hist[hi]; if (acc > cut) break; }
+    if (hi - lo < 16) return Uint8Array.from(gray);                // почти ровный кадр: растягивать нечего
+    const out = new Uint8Array(gray.length);
+    for (let i = 0; i < gray.length; i++) out[i] = Math.max(0, Math.min(255, Math.round((gray[i] - lo) * 255 / (hi - lo))));
+    return out;
 }
 
 // Тёмное на светлом: пиксель «чернила», если заметно темнее среднего в окрестности.
@@ -40,6 +56,14 @@ export function darkMask(gray, w, h, { radius = 20, offset = 28 } = {}) {
         }
     }
     return mask;
+}
+
+// Чёрно-белая копия для чтения надписей: чернила — 0, всё остальное — 255. Убирает текстуру (дерево, блики) и выравнивает яркость.
+export function binarize(gray, w, h, { radius = Math.round(w * 0.02), offset = 25 } = {}) {
+    const mask = darkMask(gray, w, h, { radius, offset });
+    const out = new Uint8Array(mask.length);
+    for (let i = 0; i < out.length; i++) out[i] = mask[i] ? 0 : 255;
+    return out;
 }
 
 // Связные области маски (8 соседей). Возвращает рамки с площадью.
