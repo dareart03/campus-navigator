@@ -203,7 +203,7 @@ test('на промежуточном 2 этаже маршрут 3 → 1 сос
 test('маршрут между этажами длиннее двух лестничных рёбер и симметричен', () => {
     const there = findShortestPath(idx, 'f3-room-311', 'f1-room-103');
     const back = findShortestPath(idx, 'f1-room-103', 'f3-room-311');
-    assert.ok(there.distance > 2 * 40);
+    assert.ok(there.distance > 2 * data.meta.stairsWeight);
     assert.ok(Math.abs(there.distance - back.distance) < 1e-6);
 });
 
@@ -330,4 +330,21 @@ test('выход находится на 1 этаже, путь от 3 этаж�
     assert.equal(floorOf(found.id), 1);
     const floors = found.path.map(floorOf).filter((f, i, a) => i === 0 || f !== a[i - 1]);
     assert.deepEqual(floors, [3, 2, 1]);
+});
+
+test('лестница между этажами «стоит» два пролёта: вес не меньше 150 и одинаков во всех рёбрах', () => {
+    const stairs = data.edges.filter(e => floorOf(e.from) !== floorOf(e.to));
+    assert.ok(data.meta.stairsWeight >= 150);
+    stairs.forEach(e => assert.equal(e.weight, data.meta.stairsWeight, `${e.from} — ${e.to}`));
+});
+
+test('ближайший туалет из аудитории на 2 и 3 этажах — на том же этаже, а не этажом ниже', () => {
+    for (const poi of ['wc-man', 'wc-woman']) {
+        for (const room of idx.rooms) {
+            const floor = floorOf(room);
+            if (floor === 1) continue;                         // на 1 этаже туалеты далеко от левого крыла: там верхний этаж может быть ближе
+            const found = findNearest(idx, room, poi);
+            assert.equal(floorOf(found.id), floor, `${room} → ${poi}: выбран ${found.id}`);
+        }
+    }
 });

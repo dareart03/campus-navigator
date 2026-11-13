@@ -645,7 +645,9 @@ def main():
     ap.add_argument('--pattern', default='map[0-9]*.svg', help='маска имён файлов этажей')
     ap.add_argument('--out', default='data/data.json')
     ap.add_argument('--margin', type=float, default=6, help='отступ маршрута от стен, px (меньше — если коридоры узкие)')
-    ap.add_argument('--stairs-weight', type=float, default=40, help='вес подъёма на один этаж (в px-эквиваленте)')
+    ap.add_argument('--stairs-weight', type=float, default=200,
+                    help='вес подъёма на один этаж, в единицах карты. Этаж = два лестничных пролёта и площадка (около 12–15 м пути, '
+                         'по лестнице идут медленнее): по плану это порядка 200. Мало (было 40) — «ближайший» туалет выбирается этажом ниже')
     ap.add_argument('--debug-dir', default=None, help='куда писать SVG с нарисованным графом для проверки глазами')
     ap.add_argument('--no-prefix', action='store_true', help='без префиксов f<N>- у id (только для одного этажа)')
     ap.add_argument('--check', nargs=2, metavar=('A', 'B'), help='после сборки показать маршрут между двумя узлами')

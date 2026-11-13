@@ -6,7 +6,7 @@
    3
   ],
   "margin": 6,
-  "stairsWeight": 40,
+  "stairsWeight": 200,
   "sources": [
    "map1.svg",
    "map2.svg",
@@ -10065,49 +10065,49 @@
   {
    "from": "f1-ladder-1",
    "to": "f2-ladder-1",
-   "weight": 40,
+   "weight": 200,
    "type": "stairs"
   },
   {
    "from": "f1-ladder-2",
    "to": "f2-ladder-2",
-   "weight": 40,
+   "weight": 200,
    "type": "stairs"
   },
   {
    "from": "f1-ladder-3",
    "to": "f2-ladder-3",
-   "weight": 40,
+   "weight": 200,
    "type": "stairs"
   },
   {
    "from": "f1-ladder-4",
    "to": "f2-ladder-4",
-   "weight": 40,
+   "weight": 200,
    "type": "stairs"
   },
   {
    "from": "f2-ladder-1",
    "to": "f3-ladder-1",
-   "weight": 40,
+   "weight": 200,
    "type": "stairs"
   },
   {
    "from": "f2-ladder-2",
    "to": "f3-ladder-2",
-   "weight": 40,
+   "weight": 200,
    "type": "stairs"
   },
   {
    "from": "f2-ladder-3",
    "to": "f3-ladder-3",
-   "weight": 40,
+   "weight": 200,
    "type": "stairs"
   },
   {
    "from": "f2-ladder-4",
    "to": "f3-ladder-4",
-   "weight": 40,
+   "weight": 200,
    "type": "stairs"
   }
  ]
