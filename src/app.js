@@ -1122,7 +1122,7 @@ async function start() {
         const graph = await loadGraph();
         FLOORS = floorsOf(graph);
         if (!FLOORS.length) throw new GraphError('В data.json не указаны этажи: пересоберите граф (python run.py)');
-        START_FLOOR = FLOORS[FLOORS.length - 1];          // открываем верхний этаж, как и раньше
+        START_FLOOR = FLOORS[0];                          // при запуске открываем первый этаж
         currentFloor = START_FLOOR;
         await loadMaps();
 
