@@ -6,7 +6,7 @@
 
 1. удалите все SVG из папки `maps/` и положите свои планы этажей: `map1.svg`, `map2.svg`, ... (по файлу на этаж);
 2. замените `tools/names.json` своим: он задаёт русские названия особых мест (`"dining room": "Столовая"`, `"103": "103 — Абонемент"`); если названия не нужны, оставьте `{}`;
-3. назовите объекты в SVG по шаблону (слои с `id`, подробности в [docs/data-and-maps.md](docs/data-and-maps.md)): комнаты `room-XXX` (`room-311`), двери `door-XXX` (`door-325-1`, `door-325-2`, если дверей несколько), лестницы `ladder-N` и их двери `door-ladder-N` (одинаковый номер на соседних этажах соединяется), туалеты `man-WC`, `woman-WC`, `special-WC`, выходы `door-exit-N`; группы `corridor`, `Rooms`, `Ladders`, `Doors`, `Texts`;
+3. назовите объекты в SVG по шаблону (слои с `id`, подробности в [docs/data-and-maps.md](data-and-maps.md)): комнаты `room-XXX` (`room-311`), двери `door-XXX` (`door-325-1`, `door-325-2`, если дверей несколько), лестницы `ladder-N` и их двери `door-ladder-N` (одинаковый номер на соседних этажах соединяется), туалеты `man-WC`, `woman-WC`, `special-WC`, выходы `door-exit-N`; группы `corridor`, `Rooms`, `Ladders`, `Doors`, `Texts`;
 4. запустите `python run.py`: скрипт построит новый `data/data.json`, сообщит о замечаниях (комната без двери и т. п.) и положит картинки графа в `debug/`.
 
 
